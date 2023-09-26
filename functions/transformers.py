@@ -84,7 +84,7 @@ class NotInImputerPolars(BaseEstimator, TransformerMixin):
         """
         if len(X.shape) == 1:
             # Convert the Series to a DataFrame-like structure
-            if X.name:
+            if hasattr(X, "name"):
                 X = pl.DataFrame({X.name: X})
             else:
                 X = pl.DataFrame(X)

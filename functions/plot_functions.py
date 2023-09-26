@@ -47,6 +47,7 @@ def plot_grouped_bars(
     return_fig: bool = False,
     figsize_args: dict = {},  # Dictionary for figsize arguments
     legend_args: dict = {},  # Dictionary for legend arguments
+    x_label_args: dict = {},
 ):
     """
     Create a grouped bar plot with two y-axes for two columns in a Polars DataFrame.
@@ -77,8 +78,8 @@ def plot_grouped_bars(
         mask = df[category_col].is_in(df.sort(col1)[-top_vals:][category_col])
         df = df.filter(mask)
 
-    df = df.sort(col1, descending=True)
-    categories = df[category_col].unique()
+    df = df.sort(category_col, descending=True)
+    categories = df[category_col].unique().sort(descending=True)
 
     x_positions = np.arange(len(categories))
     x_offsets = [-group_width / 2, group_width / 2]
@@ -104,7 +105,7 @@ def plot_grouped_bars(
     )
 
     ax1.set_xticks(np.arange(len(categories)))
-    ax1.set_xticklabels(categories)
+    ax1.set_xticklabels(categories, **x_label_args)
 
     ax1.set_ylabel(col1)
     ax2.set_ylabel(col2)
