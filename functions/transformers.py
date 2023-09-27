@@ -1,7 +1,7 @@
 from sklearn.base import BaseEstimator, TransformerMixin  # type:ignore
 from typing import Iterable, Optional, Union
-import pandas as pd
 import polars as pl
+import numpy as np
 
 
 class NotInImputerPolars(BaseEstimator, TransformerMixin):
@@ -53,6 +53,7 @@ class NotInImputerPolars(BaseEstimator, TransformerMixin):
         cat_no: Optional[int] = None,
         fill_value: Optional[Union[int, str, float]] = None,
         most_frequent: bool = False,
+        return_format: str = "pl",
     ):
         """
         Initialize the NotInImputer.
@@ -71,6 +72,7 @@ class NotInImputerPolars(BaseEstimator, TransformerMixin):
         self.filter = filter
         self.cat_no = cat_no
         self.most_frequent = most_frequent
+        self.return_format = return_format
 
     def fit(self, X: Union[pl.Series, pl.DataFrame], y=None):
         """
@@ -120,9 +122,12 @@ class NotInImputerPolars(BaseEstimator, TransformerMixin):
         """
         if len(X.shape) == 1:
             # Convert the Series to a DataFrame-like structure
-            X = pl.DataFrame({X.name: X})
+            if hasattr(X, "name"):
+                X = pl.DataFrame({X.name: X})
+            else:
+                X = pl.DataFrame(X)
         X_filled = X
-        for col in X.columns:
+        for col in X_filled.columns:
             X_filled = X_filled.with_columns(
                 pl.col(col)
                 .map_elements(
@@ -132,4 +137,40 @@ class NotInImputerPolars(BaseEstimator, TransformerMixin):
             )
         if len(X_filled.shape) == 1:
             X_filled = X_filled.values.reshape(-1, 1)
+        if self.return_format == "np":
+            X_filled = X_filled.to_numpy()
         return X_filled
+
+
+class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
+    class Step:
+        def __init__(self, transformer, col) -> None:
+            self.transformer = transformer
+            self.col = col
+
+        def fit(self, X):
+            self.transformer.fit(X)
+            return self
+
+        def transform(self, X):
+            return self.transformer.transform(X)
+
+    def __init__(self, steps: Iterable[Step]):
+        self.steps = steps
+
+    def fit(self, X: Union[pl.Series, pl.DataFrame], y=None):
+        for step in self.steps:
+            step.fit(X[step.col])
+        return self
+
+    def transform(self, X: Union[pl.Series, pl.DataFrame], y=None):
+        for step in self.steps:
+            transformed_col = step.transform(X[step.col])
+            if isinstance(transformed_col, np.ndarray):
+                transformed_col = pl.Series(name=step.col, values=transformed_col)
+            else:
+                transformed_col = transformed_col[step.col]
+            X = X.with_columns(transformed_col.alias(step.col))
+        if len(X.shape) == 1:
+            X = X.values.reshape(-1, 1)
+        return X
