@@ -166,11 +166,57 @@ class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
     def transform(self, X: Union[pl.Series, pl.DataFrame], y=None):
         for step in self.steps:
             transformed_col = step.transform(X[step.col])
-            if isinstance(transformed_col, np.ndarray):
-                transformed_col = pl.Series(name=step.col, values=transformed_col)
+            if len(transformed_col.shape) == 1:
+                if isinstance(transformed_col, np.ndarray):
+                    transformed_col = pl.Series(name=step.col, values=transformed_col)
+                elif isinstance(transformed_col, pl.DataFrame):
+                    transformed_col = transformed_col[step.col]
+                X = X.with_columns(transformed_col.alias(step.col))
             else:
-                transformed_col = transformed_col[step.col]
-            X = X.with_columns(transformed_col.alias(step.col))
+                if not isinstance(transformed_col, pl.DataFrame):
+                    transformed_col = pl.DataFrame(transformed_col)
+
+                X = pl.concat(
+                    [X.drop(columns=step.col), transformed_col], how="horizontal"
+                )
+
         if len(X.shape) == 1:
             X = X.values.reshape(-1, 1)
+        return X
+
+
+class PolarsOneHotEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self) -> None:
+        self.categories: list
+        self.cats_not_in_transform: list
+
+    def fit(self, X: Union[pl.Series, pl.DataFrame], y=None):
+        self.categories = X.unique().to_list()
+        return self
+
+    def transform(self, X: pl.Series, y=None):
+        name = X.name
+        self.cats_not_in_transform = [
+            i for i in self.categories if i not in X.unique().to_list()
+        ]
+        X = X.to_dummies()
+        for col in self.cats_not_in_transform:
+            X = X.with_columns(
+                pl.zeros(len(X), pl.Int8, eager=True).alias((f"{name}_{col}"))
+            )
+        return X.select(sorted(X.columns))
+
+
+class PolarsOrdinalEncoder(BaseEstimator, TransformerMixin):
+    def __init__(self, order: list) -> None:
+        self.order = order
+
+    def fit(self, X, y=None):
+        self.map = {}
+        for i, val in enumerate(self.order):
+            self.map[val] = i
+        return self
+
+    def transform(self, X: pl.Series, y=None):
+        X = X.map_dict(self.map)
         return X
