@@ -181,3 +181,64 @@ def replace_below_min(
         .alias(col)
     )
     return df
+
+
+def text_preprocessing_wo_training(df):
+    title_categories_contains = {
+        "credit_card": ["credit_card"],
+        "car": ["car"],
+        "debt_consolidation": ["consolid", "refinan", "debt"],
+        "medical": ["medic"],
+        "business": ["business"],
+        "moving": ["moving", "relocation"],
+        "home": ["home", "house"],
+        "education": ["educ", "school", "stud", "university"],
+        "green_loan": ["renew"],
+    }
+    title_categories_exact = {None: ["_", "other"]}
+
+    df = (
+        df.pipe(lowercase_underscore_text, "Loan Title", "title")
+        .pipe(categorize_strings_contains, title_categories_contains, "title")
+        .pipe(categorize_strings_is, title_categories_exact, "title")
+        .pipe(replace_below_min, "Amount Requested", 1, None)
+        .pipe(replace_below_min, "Debt-To-Income Ratio", 0, None)
+        .pipe(winsorize_column, "Debt-To-Income Ratio", 0.9)
+    )
+    return df
+
+
+def title_text_features(df: pl.DataFrame):
+    df = (
+        df.pipe(text_contains_numbers, "title")
+        .pipe(text_length, "title")
+        .pipe(starts_with_lowercase, "title")
+        .pipe(drop_column, "Loan Title")
+    )
+    return df
+
+
+def winsorize_column(
+    df: pl.DataFrame, col_name: str, percentile: float
+) -> pl.DataFrame:
+    """
+    Winsorizes a specified column in a Polars DataFrame.
+
+    Args:
+        df (pd.DataFrame): The DataFrame containing the data.
+        col_name (str): The name of the column to be winsorized.
+        percentile (float): The percentile value to use for winsorization.
+
+    Returns:
+        pd.DataFrame: A modified DataFrame with the specified column winsorized.
+    """
+    # Calculate the specified percentile value
+    q = df[col_name].quantile(percentile)
+
+    # Perform Winsorization using the clip_max method
+    df_winsorized = df.clone()
+    df_winsorized = df_winsorized.with_columns(
+        pl.col(col_name).clip_max(q).alias(col_name)
+    )
+
+    return df_winsorized

@@ -220,3 +220,15 @@ class PolarsOrdinalEncoder(BaseEstimator, TransformerMixin):
     def transform(self, X: pl.Series, y=None):
         X = X.map_dict(self.map)
         return X
+
+
+class PolarsNanImputer(BaseEstimator, TransformerMixin):
+    def __init__(self, fill_value: list) -> None:
+        self.fill_value = fill_value
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X: pl.Series, y=None):
+        X = X.fill_null(self.fill_value)
+        return X
