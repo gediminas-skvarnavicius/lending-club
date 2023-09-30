@@ -229,6 +229,9 @@ class PolarsNanImputer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
 
-    def transform(self, X: pl.Series, y=None):
+    def transform(self, X: pl.DataFrame, y=None):
+        bool_cols = X.select(pl.col(pl.Boolean)).columns
+        for col in bool_cols:
+            X = X.with_columns(pl.col(col).cast(pl.Int32).alias(col))
         X = X.fill_null(self.fill_value)
         return X
