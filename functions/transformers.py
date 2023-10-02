@@ -2,6 +2,7 @@ from sklearn.base import BaseEstimator, TransformerMixin  # type:ignore
 from typing import Iterable, Optional, Union
 import polars as pl
 import numpy as np
+from boruta import BorutaPy
 
 
 class NotInImputerPolars(BaseEstimator, TransformerMixin):
@@ -222,7 +223,7 @@ class PolarsOrdinalEncoder(BaseEstimator, TransformerMixin):
         return X
 
 
-class PolarsNanImputer(BaseEstimator, TransformerMixin):
+class PolarsNullImputer(BaseEstimator, TransformerMixin):
     def __init__(self, fill_value: list) -> None:
         self.fill_value = fill_value
 
@@ -235,3 +236,136 @@ class PolarsNanImputer(BaseEstimator, TransformerMixin):
             X = X.with_columns(pl.col(col).cast(pl.Int32).alias(col))
         X = X.fill_null(self.fill_value)
         return X
+
+
+# Redefining for boruta compatibility
+np.int = int
+np.float = float
+np.bool = bool
+
+
+class BorutaFeatureSelectorPolars(BaseEstimator, TransformerMixin):
+    """
+    Transformer for feature selection using Boruta algorithm.
+
+    Boruta is a feature selection algorithm that works well with ensemble methods.
+    It helps identify relevant features by comparing the importance of features with
+    a shadow (random) set of features. Features that are more important than the
+    shadow features are selected.
+
+    Parameters:
+    -----------
+    estimator : object
+        The estimator to be used for feature importance comparison.
+    n_estimators : int or 'auto', optional (default='auto')
+        The number of base estimators to use in the ensemble. 'auto' sets it to 100.
+    verbose : int, optional (default=0)
+        Verbosity level.
+    random_state : int or None, optional (default=None)
+        Seed for random number generation.
+    perc : int, optional (default=100)
+        The percentile at which to stop the feature selection process.
+    max_iter : int, optional (default=100)
+        The maximum number of iterations to run the Boruta algorithm.
+    alpha : float, optional (default=0.05)
+        The significance level for testing the feature importance.
+    two_step : bool, optional (default=False)
+        Whether to use the two-step feature selection process.
+    apply : bool, optional (default=True)
+        Whether to apply feature selection or keep all features.
+
+    Attributes:
+    -----------
+    selected_features : pd.Index
+        Index of selected features.
+
+    Methods:
+    --------
+    fit(X, y)
+        Fit the Boruta feature selector to the input data.
+
+    transform(X)
+        Transform the input data by selecting relevant features.
+
+    Returns:
+    --------
+    X_selected : pd.DataFrame
+        A DataFrame with selected features if apply is True; otherwise,
+        it returns the input data.
+    """
+
+    def __init__(
+        self,
+        estimator,
+        n_estimators="auto",
+        verbose=0,
+        random_state=None,
+        perc=100,
+        max_iter=100,
+        alpha=0.05,
+        two_step=False,
+        apply=True,
+    ):
+        self.estimator = estimator
+        self.n_estimators = n_estimators
+        self.verbose = verbose
+        self.random_state = random_state
+        self.perc = perc
+        self.max_iter = max_iter
+        self.alpha = alpha
+        self.two_step = two_step
+        self.apply = apply
+
+    def fit(self, X: pl.DataFrame, y: pl.Series):
+        """
+        Fit the Boruta feature selector to the input data.
+
+        Parameters:
+        -----------
+        X : pd.DataFrame
+            The feature matrix.
+        y : pd.Series
+            The target variable.
+
+        Returns:
+        --------
+        self : BorutaFeatureSelector
+            The fitted feature selector instance.
+        """
+        # Initialize the BorutaPy instance
+        if self.apply:
+            self.boruta = BorutaPy(
+                estimator=self.estimator,
+                n_estimators=self.estimator.n_estimators,
+                verbose=self.verbose,
+                random_state=self.random_state,
+                perc=self.perc,
+                max_iter=self.max_iter,
+                alpha=self.alpha,
+                two_step=self.two_step,
+            )
+
+            # Fit BorutaPy to the data
+            self.boruta.fit(X.to_numpy(), y)
+            self.selected_features = np.array(X.columns)[self.boruta.support_]
+        return self
+
+    def transform(self, X: pl.DataFrame):
+        """
+        Transform the input data by selecting relevant features.
+
+        Parameters:
+        -----------
+        X : pd.DataFrame
+            The feature matrix.
+
+        Returns:
+        --------
+        X_selected : pd.DataFrame
+            A DataFrame with selected features if apply is True; otherwise, it returns the input data.
+        """
+        # Transform the data to select the relevant features
+        if self.apply:
+            return X[self.selected_features]
+        else:
+            return X

@@ -78,8 +78,8 @@ def plot_grouped_bars(
         mask = df[category_col].is_in(df.sort(col1)[-top_vals:][category_col])
         df = df.filter(mask)
 
-    df = df.sort(category_col, descending=True)
-    categories = df[category_col].unique().sort(descending=True)
+    df = df.sort(category_col, descending=False)
+    categories = df[category_col].unique().sort(descending=False)
 
     x_positions = np.arange(len(categories))
     x_offsets = [-group_width / 2, group_width / 2]

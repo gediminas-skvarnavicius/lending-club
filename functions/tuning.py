@@ -131,6 +131,7 @@ class Models:
             X_val: Union[pl.DataFrame, np.ndarray, pl.Series],
             y_val: Union[pl.DataFrame, np.ndarray, pl.Series],
             n: int = 10,
+            n_training: int = 5,
             starting_params: Optional[Dict] = None,
         ):
             """
@@ -147,16 +148,19 @@ class Models:
                     Starting hyperparameters for optimization. Default is None.
             """
             tuner = tune.Tuner(
-                trainable=tune.with_parameters(
-                    Trainable,
-                    pipeline=self.pipeline,
-                    X_train=X_train,
-                    y_train=y_train,
-                    X_val=X_val,
-                    y_val=y_val,
+                trainable=tune.with_resources(
+                    tune.with_parameters(
+                        Trainable,
+                        pipeline=self.pipeline,
+                        X_train=X_train,
+                        y_train=y_train,
+                        X_val=X_val,
+                        y_val=y_val,
+                    ),
+                    resources={"CPU": 1},
                 ),
                 run_config=train.RunConfig(
-                    stop={"training_iteration": 5},
+                    stop={"training_iteration": n_training},
                     storage_path=f"/tmp/tune_results/",
                     name=self.name,
                     checkpoint_config=train.CheckpointConfig(checkpoint_at_end=False),
