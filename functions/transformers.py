@@ -149,8 +149,8 @@ class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
             self.transformer = transformer
             self.col = col
 
-        def fit(self, X):
-            self.transformer.fit(X)
+        def fit(self, X, y=None):
+            self.transformer.fit(X, y)
             return self
 
         def transform(self, X):
@@ -161,7 +161,7 @@ class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
 
     def fit(self, X: Union[pl.Series, pl.DataFrame], y=None):
         for step in self.steps:
-            step.fit(X[step.col])
+            step.fit(X[step.col], y)
         return self
 
     def transform(self, X: Union[pl.Series, pl.DataFrame], y=None):
@@ -369,3 +369,23 @@ class BorutaFeatureSelectorPolars(BaseEstimator, TransformerMixin):
             return X[self.selected_features]
         else:
             return X
+
+
+class TargetMeanOrderedLabeler(BaseEstimator, TransformerMixin):
+    def __init__(self, how: str = "mean") -> None:
+        self.map = {}
+        self.how = how
+
+    def fit(self, X: pl.Series, y: pl.Series):
+        self.sort_df = pl.DataFrame([X, y]).group_by(X.name).mean().sort(y.name)
+        if self.how == "label":
+            for i, val in enumerate(self.sort_df[X.name]):
+                self.map[val] = i
+        if self.how == "mean":
+            for mean, val in zip(self.sort_df[y.name], self.sort_df[X.name]):
+                self.map[val] = mean
+        return self
+
+    def transform(self, X: pl.Series, y=None):
+        X = X.map_dict(self.map)
+        return X

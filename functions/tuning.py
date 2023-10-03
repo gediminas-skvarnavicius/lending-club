@@ -5,6 +5,12 @@ import polars as pl
 import numpy as np
 from sklearn.pipeline import Pipeline
 from ray.tune.search.optuna import OptunaSearch
+from sklearn.model_selection import StratifiedShuffleSplit
+from ray.tune.stopper import (
+    CombinedStopper,
+    MaximumIterationStopper,
+    TrialPlateauStopper,
+)
 
 
 def objective(pipeline, params, X_train, y_train, X_val, y_val, n):
@@ -27,15 +33,33 @@ class Trainable(tune.Trainable):
         self.X_val = X_val
         self.y_val = y_val
 
+        self.spliter_train = StratifiedShuffleSplit(
+            n_splits=10, random_state=1, test_size=2, train_size=15000
+        )
+        self.spliter_test = StratifiedShuffleSplit(
+            n_splits=10, random_state=1, test_size=2, train_size=5000
+        )
+
+        self.split_train = self.spliter_train.split(self.X_train, self.y_train)
+        self.split_test = self.spliter_test.split(self.X_val, self.y_val)
+
+        self.split_idx_train = {}
+        for i, split_id in enumerate(self.split_train):
+            self.split_idx_train[i] = split_id[0]
+
+        self.split_idx_test = {}
+        for i, split_id in enumerate(self.split_test):
+            self.split_idx_test[i] = split_id[0]
+
     def step(self):  # This is called iteratively.
         print(self.get_config())
         score = objective(
             self.pipeline,
             self.params,
-            self.X_train,
-            self.y_train,
-            self.X_val,
-            self.y_val,
+            self.X_train[self.split_idx_train[self.x]],
+            self.y_train[self.split_idx_train[self.x]],
+            self.X_val[self.split_idx_test[self.x]],
+            self.y_val[self.split_idx_test[self.x]],
             self.x,
         )
         self.x += 1
@@ -131,7 +155,7 @@ class Models:
             X_val: Union[pl.DataFrame, np.ndarray, pl.Series],
             y_val: Union[pl.DataFrame, np.ndarray, pl.Series],
             n: int = 10,
-            n_training: int = 5,
+            n_training: int = 10,
             starting_params: Optional[Dict] = None,
         ):
             """
@@ -147,6 +171,17 @@ class Models:
                 starting_params : dict, optional
                     Starting hyperparameters for optimization. Default is None.
             """
+            stopper = CombinedStopper(
+                MaximumIterationStopper(n_training),
+                TrialPlateauStopper(
+                    std=0.1,
+                    grace_period=1,
+                    num_results=3,
+                    metric="score",
+                    metric_threshold=0.55,
+                    mode="min",
+                ),
+            )
             tuner = tune.Tuner(
                 trainable=tune.with_resources(
                     tune.with_parameters(
@@ -160,7 +195,7 @@ class Models:
                     resources={"CPU": 1},
                 ),
                 run_config=train.RunConfig(
-                    stop={"training_iteration": n_training},
+                    stop=stopper,
                     storage_path=f"/tmp/tune_results/",
                     name=self.name,
                     checkpoint_config=train.CheckpointConfig(checkpoint_at_end=False),
