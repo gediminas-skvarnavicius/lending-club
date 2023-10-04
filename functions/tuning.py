@@ -34,10 +34,10 @@ class Trainable(tune.Trainable):
         self.y_val = y_val
 
         self.spliter_train = StratifiedShuffleSplit(
-            n_splits=10, random_state=1, test_size=2, train_size=15000
+            n_splits=10, random_state=1, test_size=2, train_size=100000
         )
         self.spliter_test = StratifiedShuffleSplit(
-            n_splits=10, random_state=1, test_size=2, train_size=5000
+            n_splits=10, random_state=1, test_size=2, train_size=30000
         )
 
         self.split_train = self.spliter_train.split(self.X_train, self.y_train)
@@ -51,8 +51,7 @@ class Trainable(tune.Trainable):
         for i, split_id in enumerate(self.split_test):
             self.split_idx_test[i] = split_id[0]
 
-    def step(self):  # This is called iteratively.
-        print(self.get_config())
+    def step(self):
         score = objective(
             self.pipeline,
             self.params,
@@ -140,6 +139,7 @@ class Models:
             name: str,
             pipeline: Pipeline,
             param_grid: Dict,
+            metric_threshold: float = 0.55,  # threshold of tuning metric for early stopping
             override_n: Optional[int] = None,
         ) -> None:
             self.pipeline: Pipeline = pipeline
@@ -147,6 +147,7 @@ class Models:
             self.best_params: Dict
             self.override_n = override_n
             self.name = name
+            self.metric_threshold = metric_threshold
 
         def tune_model(
             self,
@@ -178,7 +179,7 @@ class Models:
                     grace_period=1,
                     num_results=3,
                     metric="score",
-                    metric_threshold=0.55,
+                    metric_threshold=self.metric_threshold,
                     mode="min",
                 ),
             )
@@ -276,6 +277,7 @@ class Models:
         pipeline: Pipeline,
         param_grid: Dict,
         override_n: Optional[int] = None,
+        metric_threshold: float = 0.55,
     ):
         """
         Add a machine learning model to the container.
@@ -291,7 +293,11 @@ class Models:
                 Number of trials for hyperparameter optimization. Overrides the default value.
         """
         self.models[model_name] = self.Model(
-            model_name, pipeline, param_grid, override_n=override_n
+            model_name,
+            pipeline,
+            param_grid,
+            override_n=override_n,
+            metric_threshold=metric_threshold,
         )
 
     def remove_model(self, model_name: str):

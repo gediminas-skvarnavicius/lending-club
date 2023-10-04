@@ -203,7 +203,7 @@ def text_preprocessing_wo_training(df):
         .pipe(categorize_strings_is, title_categories_exact, "title")
         .pipe(replace_below_min, "Amount Requested", 1, None)
         .pipe(replace_below_min, "Debt-To-Income Ratio", 0, None)
-        .pipe(winsorize_column, "Debt-To-Income Ratio", 0.9)
+        # .pipe(winsorize_column, "Debt-To-Income Ratio", 0.9)
     )
     return df
 

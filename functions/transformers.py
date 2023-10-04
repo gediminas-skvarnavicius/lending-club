@@ -231,6 +231,8 @@ class PolarsNullImputer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: pl.DataFrame, y=None):
+        if not isinstance(X, pl.DataFrame):
+            X = pl.DataFrame(X)
         bool_cols = X.select(pl.col(pl.Boolean)).columns
         for col in bool_cols:
             X = X.with_columns(pl.col(col).cast(pl.Int32).alias(col))
