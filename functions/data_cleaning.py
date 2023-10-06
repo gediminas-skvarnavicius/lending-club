@@ -217,5 +217,6 @@ def clean_accepted(df: pl.DataFrame):
         .pipe(text_to_num, ["term"])
         .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
+        .pipe(str_to_date, ["issue_d"], "%b-%Y")
     )
     return df
