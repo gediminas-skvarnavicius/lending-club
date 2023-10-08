@@ -148,7 +148,7 @@ def winsorize_column(
     return df_winsorized
 
 
-def text_to_num(data: pl.DataFrame, cols):
+def text_int_to_num(data: pl.DataFrame, cols):
     for col in cols:
         data = data.with_columns(
             pl.col(col)
@@ -157,6 +157,10 @@ def text_to_num(data: pl.DataFrame, cols):
             .alias(col)
         )
     return data
+
+
+def cast_str_to_float(data, col_name):
+    return data.with_columns(pl.col(col_name).cast(pl.Float32))
 
 
 def str_to_date(data: pl.DataFrame, cols, fmt):
@@ -174,6 +178,20 @@ def str_to_date(data: pl.DataFrame, cols, fmt):
         else:
             data = data.with_columns(pl.col(col).str.to_date(fmt).alias(col))
     return data
+
+
+def drop_column(df: pl.DataFrame, col_to_drop: str):
+    """
+    Drops a column from a polars DataFrame
+
+    Args:
+    df (pl.DataFrame): The input DataFrame.
+    col (str): The name of the column to drop.
+
+    Returns:
+        pl.DataFrame: A new DataFrame with the specified column removed.
+    """
+    return df.drop(columns=col_to_drop)
 
 
 def clean_accepted_rejected(df):
@@ -202,7 +220,7 @@ def clean_accepted_rejected(df):
     return df
 
 
-def clean_accepted(df: pl.DataFrame):
+def clean_accepted_single(df: pl.DataFrame):
     title_categories_contains = {
         "nurse": ["nurse"],
         "driver": ["driver"],
@@ -214,9 +232,35 @@ def clean_accepted(df: pl.DataFrame):
         .pipe(cut_leading_underscore, ["emp_title"])
         .pipe(categorize_strings_contains, title_categories_contains, "emp_title")
         .pipe(categorize_strings_is, title_categories_is, "emp_title")
-        .pipe(text_to_num, ["term"])
+        .pipe(text_int_to_num, ["term"])
         .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
         .pipe(str_to_date, ["issue_d"], "%b-%Y")
+        .pipe(replace_below_min, "dti", 0, None)
+        .pipe(drop_column, "application_type")
+    )
+    return df
+
+
+def clean_accepted_joint(df: pl.DataFrame):
+    title_categories_contains = {
+        "nurse": ["nurse"],
+        "driver": ["driver"],
+        "manager": ["manager"],
+    }
+    title_categories_is = {"nurse": ["rn"], None: ["_", "", " "]}
+    df = (
+        df.pipe(lowercase_underscore_text, "emp_title", "emp_title")
+        .pipe(cut_leading_underscore, ["emp_title"])
+        .pipe(categorize_strings_contains, title_categories_contains, "emp_title")
+        .pipe(categorize_strings_is, title_categories_is, "emp_title")
+        .pipe(text_int_to_num, ["term"])
+        .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
+        .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
+        .pipe(str_to_date, ["issue_d"], "%b-%Y")
+        .pipe(replace_below_min, "dti", 0, None)
+        .pipe(cast_str_to_float, "revol_bal_joint")
+        .pipe(cast_str_to_float, "sec_app_revol_util")
+        .pipe(drop_column, "application_type")
     )
     return df

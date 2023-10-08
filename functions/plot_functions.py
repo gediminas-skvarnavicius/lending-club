@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
+import pandas as pd
+from typing import Any, Tuple
+import seaborn as sns
 
 
 def plot_x_axis_break(ax1: plt.Axes, ax2: plt.Axes, d: float = 1.5, **kwargs) -> None:
@@ -29,11 +32,6 @@ def plot_x_axis_break(ax1: plt.Axes, ax2: plt.Axes, d: float = 1.5, **kwargs) ->
     )
     ax1.plot([1], [0], transform=ax1.transAxes, **kwargs)
     ax2.plot([0], [0], transform=ax2.transAxes, **kwargs)
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-import polars as pl
 
 
 def plot_grouped_bars(
@@ -120,3 +118,57 @@ def plot_grouped_bars(
         return fig, (ax1, ax2)
     else:
         plt.show()
+
+
+def create_heatmap(
+    data: pl.DataFrame,
+    target_col: str,
+    feature_col: str,
+    ax: plt.Axes,
+    sample_size: int = None,
+    seed: int = 1,
+) -> None:
+    """
+    Create a heatmap using data from a Polars DataFrame.
+
+    Args:
+        data (pl.DataFrame): The Polars DataFrame containing the data.
+        target_col (str): The name of the column to be used as the target variable (e.g., "grade").
+        feature_col (str): The name of the column to be used as the feature variable (e.g., "home_ownership").
+        ax (Any): The axes on which to draw the heatmap.
+
+    Returns:
+        None
+    """
+    if sample_size:
+        counts_df = (
+            data.select([target_col, feature_col])
+            .sample(sample_size, seed=seed)
+            .pivot(
+                values=feature_col,
+                index=target_col,
+                columns=feature_col,
+                aggregate_function="count",
+            )
+            .sort(target_col)
+        )
+    else:
+        counts_df = (
+            data.select([target_col, feature_col])
+            .pivot(
+                values=feature_col,
+                index=target_col,
+                columns=feature_col,
+                aggregate_function="count",
+            )
+            .sort(target_col)
+        )
+
+    counts_pd = (
+        counts_df.to_pandas()
+        .set_index(target_col)
+        .divide(counts_df.to_pandas().set_index(target_col).sum(axis=1), axis=0)
+    )
+
+    sns.heatmap(counts_pd, annot=True, fmt=".1%", ax=ax)
+    ax.set_xlabel(feature_col)
