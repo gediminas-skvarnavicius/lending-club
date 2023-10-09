@@ -15,6 +15,7 @@ def month_cyclic_features(data: pl.DataFrame, col):
         .map_elements(lambda x: np.cos(x / 12 * 2 * np.pi))
         .alias("month_cos")
     )
+    return data
 
 
 def date_features(df: pl.DataFrame, date_col: str):

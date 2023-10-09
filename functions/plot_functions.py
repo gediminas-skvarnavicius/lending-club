@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-import pandas as pd
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 import seaborn as sns
 
 
@@ -46,6 +45,7 @@ def plot_grouped_bars(
     figsize_args: dict = {},  # Dictionary for figsize arguments
     legend_args: dict = {},  # Dictionary for legend arguments
     x_label_args: dict = {},
+    axes: Optional[Tuple[plt.axes]] = None,
 ):
     """
     Create a grouped bar plot with two y-axes for two columns in a Polars DataFrame.
@@ -84,8 +84,11 @@ def plot_grouped_bars(
     x1_positions = x_positions + x_offsets[0]
     x2_positions = x_positions + x_offsets[1]
 
-    fig, ax1 = plt.subplots(**figsize_args)
-    ax2 = ax1.twinx()
+    if axes:
+        ax1, ax2 = axes
+    else:
+        fig, ax1 = plt.subplots(**figsize_args)
+        ax2 = ax1.twinx()
 
     bar1 = ax1.bar(
         x=x1_positions,
@@ -112,12 +115,10 @@ def plot_grouped_bars(
     ax1.grid(None)
     ax2.grid(None)
 
-    plt.tight_layout()
-
     if return_fig:
         return fig, (ax1, ax2)
-    else:
-        plt.show()
+    # else:
+    #     plt.show()
 
 
 def create_heatmap(
@@ -127,6 +128,7 @@ def create_heatmap(
     ax: plt.Axes,
     sample_size: int = None,
     seed: int = 1,
+    **kwargs
 ) -> None:
     """
     Create a heatmap using data from a Polars DataFrame.
@@ -170,5 +172,37 @@ def create_heatmap(
         .divide(counts_df.to_pandas().set_index(target_col).sum(axis=1), axis=0)
     )
 
-    sns.heatmap(counts_pd, annot=True, fmt=".1%", ax=ax)
+    sns.heatmap(counts_pd, ax=ax, **kwargs)
     ax.set_xlabel(feature_col)
+
+
+def aggregate_by_column(
+    data: pl.DataFrame,
+    class_col: str,
+    target_col: str,
+    alias_positive_count: str = "Positive Count",
+    alias_count: str = "Count",
+    alias_percentage: str = "Percentage",
+):
+    """
+    Aggregate data by the specified class column and policy (target) column.
+
+    Args:
+        data (pl.DataFrame): The Polars DataFrame containing the data.
+        class_col (str): The name of the class column for grouping.
+        target_col (str): The name of the policy (target) column for aggregation.
+
+    Returns:
+        pl.DataFrame: The aggregated table based on the specified columns.
+    """
+    aggregated_table = data.group_by(class_col).agg(
+        pl.sum(target_col).alias(alias_positive_count),
+        pl.count().alias(alias_count),
+        (pl.sum(target_col) / pl.count() * 100).alias(alias_percentage),
+    )
+
+    return aggregated_table
+
+
+# Example usage:
+# applications_by_month = aggregate_by_column(data_full, "month", "Policy Code")

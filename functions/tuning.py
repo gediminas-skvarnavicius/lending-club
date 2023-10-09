@@ -23,7 +23,16 @@ def objective(pipeline, params, X_train, y_train, X_val, y_val, n):
 
 
 class Trainable(tune.Trainable):
-    def setup(self, config: dict, pipeline, X_train, y_train, X_val, y_val):
+    def setup(
+        self,
+        config: dict,
+        pipeline,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        sample_size: int = 100000,
+    ):
         # config (dict): A dict of hyperparameters
         self.x = 0
         self.params = config
@@ -32,12 +41,16 @@ class Trainable(tune.Trainable):
         self.y_train = y_train
         self.X_val = X_val
         self.y_val = y_val
+        self.sample_size = sample_size
 
         self.spliter_train = StratifiedShuffleSplit(
-            n_splits=10, random_state=1, test_size=2, train_size=100000
+            n_splits=10, random_state=1, test_size=2, train_size=self.sample_size
         )
         self.spliter_test = StratifiedShuffleSplit(
-            n_splits=10, random_state=1, test_size=2, train_size=30000
+            n_splits=10,
+            random_state=1,
+            test_size=2,
+            train_size=int(self.sample_size / 3),
         )
 
         self.split_train = self.spliter_train.split(self.X_train, self.y_train)
@@ -158,6 +171,7 @@ class Models:
             n: int = 10,
             n_training: int = 10,
             starting_params: Optional[Dict] = None,
+            sample_size: int = 100000,
         ):
             """
             Tune the model's hyperparameters using Optuna.
@@ -192,6 +206,7 @@ class Models:
                         y_train=y_train,
                         X_val=X_val,
                         y_val=y_val,
+                        sample_size=sample_size,
                     ),
                     resources={"CPU": 1},
                 ),
@@ -319,6 +334,7 @@ class Models:
         y_val: Union[pl.DataFrame, np.ndarray, pl.Series],
         score: str = "f1",
         n: int = 10,
+        sample_size: int = 100000,
     ):
         """
         Tune and cross-validate all models in the container.
@@ -335,14 +351,16 @@ class Models:
         """
         for name, model in self.models.items():
             if model.override_n:
-                model.tune_model(X_train, y_train, X_val, y_val, n=model.override_n)
+                model.tune_model(
+                    X_train,
+                    y_train,
+                    X_val,
+                    y_val,
+                    n=model.override_n,
+                    sample_size=sample_size,
+                )
             else:
-                model.tune_model(X_train, y_train, X_val, y_val, n=n)
+                model.tune_model(
+                    X_train, y_train, X_val, y_val, n=n, sample_size=sample_size
+                )
             print(f"{name} tuned:")
-            # print("Best Trial:")
-            # print(f"  Value: {model.study.best_trial.value}")
-            # print("  Params: ")
-            # for key, value in model.study.best_trial.params.items():
-            #     print(f"    {key}: {value}")
-            # model.cross_val(X, y, score=score)
-            # print(f"{score} CV mean score: {round(model.cv_results.mean(),3)}")

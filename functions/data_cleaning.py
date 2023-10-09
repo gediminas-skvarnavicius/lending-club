@@ -264,3 +264,35 @@ def clean_accepted_joint(df: pl.DataFrame):
         .pipe(drop_column, "application_type")
     )
     return df
+
+
+def remove_poor_features_joint(df: pl.DataFrame):
+    df = df.pipe(
+        drop_column,  # poor relation to target
+        [
+            "disbursement_method",
+            "num_tl_120dpd_2m",
+            "delinq_amnt",
+            "mths_since_last_major_derog",
+            "mths_since_last_record",
+            "pymnt_plan",
+        ].pipe(
+            drop_column,  # highly correlated
+            [
+                "funded_amnt",
+                "funded_amnt_inv",
+                "installment",
+            ],
+        ),
+    )
+
+
+def remove_poor_features_single(df: pl.DataFrame):
+    df = df.pipe(
+        drop_column,  # highly correlated
+        [
+            "funded_amnt",
+            "funded_amnt_inv",
+            "installment",
+        ],
+    )
