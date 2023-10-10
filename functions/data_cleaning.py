@@ -236,6 +236,7 @@ def clean_accepted_single(df: pl.DataFrame):
         .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
         .pipe(str_to_date, ["issue_d"], "%b-%Y")
+        .pipe(str_to_date, ["last_credit_pull_d"], "%b-%Y")
         .pipe(replace_below_min, "dti", 0, None)
         .pipe(drop_column, "application_type")
     )
@@ -258,6 +259,7 @@ def clean_accepted_joint(df: pl.DataFrame):
         .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
         .pipe(str_to_date, ["issue_d"], "%b-%Y")
+        .pipe(str_to_date, ["last_credit_pull_d"], "%b-%Y")
         .pipe(replace_below_min, "dti", 0, None)
         .pipe(cast_str_to_float, "revol_bal_joint")
         .pipe(cast_str_to_float, "sec_app_revol_util")
@@ -281,7 +283,8 @@ def remove_poor_features_joint(df: pl.DataFrame):
             [
                 "funded_amnt",
                 "funded_amnt_inv",
-                "installment",
+                "total_bal_ex_mort",
+                "tot_hi_cred_lim",
             ],
         ),
     )
@@ -293,6 +296,7 @@ def remove_poor_features_single(df: pl.DataFrame):
         [
             "funded_amnt",
             "funded_amnt_inv",
-            "installment",
+            "total_bal_ex_mort",
+            "tot_hi_cred_lim",
         ],
     )

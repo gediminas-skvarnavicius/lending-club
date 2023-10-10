@@ -3,6 +3,7 @@ from typing import Iterable, Optional, Union
 import polars as pl
 import numpy as np
 from boruta import BorutaPy
+from collections import OrderedDict
 
 
 class NotInImputerPolars(BaseEstimator, TransformerMixin):
@@ -145,9 +146,10 @@ class NotInImputerPolars(BaseEstimator, TransformerMixin):
 
 class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
     class Step:
-        def __init__(self, transformer, col) -> None:
+        def __init__(self, name, transformer, col) -> None:
             self.transformer = transformer
             self.col = col
+            self.name = name
 
         def fit(self, X, y=None):
             self.transformer.fit(X, y)
@@ -156,16 +158,23 @@ class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
         def transform(self, X):
             return self.transformer.transform(X)
 
-    def __init__(self, steps: Iterable[Step]):
-        self.steps = steps
+    def __init__(self, steps: Iterable[Step], step_params={}):
+        self.steps = OrderedDict()
+        for step in steps:
+            self.steps[step.name] = step
+        self.step_params = step_params
 
     def fit(self, X: Union[pl.Series, pl.DataFrame], y=None):
-        for step in self.steps:
+        if self.step_params:
+            for id, params in self.step_params.items():
+                self.steps[id].transformer.set_params(**params)
+
+        for step in self.steps.values():
             step.fit(X[step.col], y)
         return self
 
     def transform(self, X: Union[pl.Series, pl.DataFrame], y=None):
-        for step in self.steps:
+        for step in self.steps.values():
             transformed_col = step.transform(X[step.col])
             if len(transformed_col.shape) == 1:
                 if isinstance(transformed_col, np.ndarray):
@@ -187,9 +196,10 @@ class PolarsColumnTransformer(BaseEstimator, TransformerMixin):
 
 
 class PolarsOneHotEncoder(BaseEstimator, TransformerMixin):
-    def __init__(self) -> None:
+    def __init__(self, drop: bool = False) -> None:
         self.categories: list
         self.cats_not_in_transform: list
+        self.drop = drop
 
     def fit(self, X: Union[pl.Series, pl.DataFrame], y=None):
         self.categories = X.unique().to_list()
@@ -205,7 +215,10 @@ class PolarsOneHotEncoder(BaseEstimator, TransformerMixin):
             X = X.with_columns(
                 pl.zeros(len(X), pl.Int8, eager=True).alias((f"{name}_{col}"))
             )
-        return X.select(sorted(X.columns))
+        X = X.select(sorted(X.columns))
+        if self.drop:
+            X = X[:, ::2]
+        return X
 
 
 class PolarsOrdinalEncoder(BaseEstimator, TransformerMixin):

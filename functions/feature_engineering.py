@@ -18,11 +18,6 @@ def month_cyclic_features(data: pl.DataFrame, col):
     return data
 
 
-def date_features(df: pl.DataFrame, date_col: str):
-    df = df.pipe(month_cyclic_features, date_col).pipe(drop_column, date_col)
-    return df
-
-
 def text_length(df: pl.DataFrame, col: str) -> pl.DataFrame:
     """
     Calculate the length of each value in a column and create a new
@@ -88,6 +83,21 @@ def drop_column(df: pl.DataFrame, col_to_drop: str):
         pl.DataFrame: A new DataFrame with the specified column removed.
     """
     return df.drop(columns=col_to_drop)
+
+
+def date_difference(df: pl.DataFrame, date_col1, date_col2, alias_col):
+    df = df.with_columns((df[date_col1] - df[date_col2]).dt.days().alias(alias_col))
+    return df
+
+
+def date_features(df: pl.DataFrame, date_col: str):
+    df = (
+        df.pipe(month_cyclic_features, date_col)
+        .pipe(date_difference, date_col, "earliest_cr_line", "earliest_cr_line")
+        .pipe(date_difference, date_col, "last_credit_pull_d", "last_credit_pull_d")
+        .pipe(drop_column, date_col)
+    )
+    return df
 
 
 def title_text_features(df: pl.DataFrame):

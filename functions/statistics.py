@@ -1,6 +1,7 @@
 import polars as pl
 import scipy.stats as stats
 from typing import Optional, Tuple
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 
 def kruskal_polars(
@@ -104,3 +105,16 @@ def chi_squared_polars(
         )
 
     return result
+
+
+def calc_vif(X):
+    # Calculating VIF
+    vif = pl.DataFrame()
+    vif = vif.with_columns(pl.Series(X.columns).alias("variables"))
+    vif = vif.with_columns(
+        pl.Series(
+            [variance_inflation_factor(X.to_numpy(), i) for i in range(X.shape[1])]
+        ).alias("VIF")
+    )
+
+    return vif.sort("VIF", descending=True)

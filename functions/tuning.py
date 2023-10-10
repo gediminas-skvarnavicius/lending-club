@@ -43,18 +43,18 @@ class Trainable(tune.Trainable):
         self.y_val = y_val
         self.sample_size = sample_size
 
-        self.spliter_train = StratifiedShuffleSplit(
+        self.splitter_train = StratifiedShuffleSplit(
             n_splits=10, random_state=1, test_size=2, train_size=self.sample_size
         )
-        self.spliter_test = StratifiedShuffleSplit(
+        self.splitter_test = StratifiedShuffleSplit(
             n_splits=10,
             random_state=1,
             test_size=2,
             train_size=int(self.sample_size / 3),
         )
 
-        self.split_train = self.spliter_train.split(self.X_train, self.y_train)
-        self.split_test = self.spliter_test.split(self.X_val, self.y_val)
+        self.split_train = self.splitter_train.split(self.X_train, self.y_train)
+        self.split_test = self.splitter_test.split(self.X_val, self.y_val)
 
         self.split_idx_train = {}
         for i, split_id in enumerate(self.split_train):
@@ -63,6 +63,13 @@ class Trainable(tune.Trainable):
         self.split_idx_test = {}
         for i, split_id in enumerate(self.split_test):
             self.split_idx_test[i] = split_id[0]
+
+        # self.y_val_stop = self.y_val[self.split_idx_test[0]]
+        # self.X_val_stop = pipeline["preprocess"].fit_transform(
+        #     self.X_val[self.split_idx_test[0]], self.y_val_stop
+        # )
+
+        # pipeline["model"].set_params(valid=[self.X_val_stop, self.y_val_stop])
 
     def step(self):
         score = objective(
