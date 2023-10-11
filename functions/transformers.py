@@ -404,3 +404,15 @@ class TargetMeanOrderedLabeler(BaseEstimator, TransformerMixin):
     def transform(self, X: pl.Series, y=None):
         X = X.map_dict(self.map)
         return X
+
+
+class FeatureRemover(BaseEstimator, TransformerMixin):
+    def __init__(self, feats_to_drop: Iterable[str] = "mean") -> None:
+        self.feats_to_drop = feats_to_drop
+
+    def fit(self, X: pl.DataFrame, y: pl.Series):
+        return self
+
+    def transform(self, X: pl.DataFrame, y=None):
+        X = X.drop(columns=self.feats_to_drop)
+        return X

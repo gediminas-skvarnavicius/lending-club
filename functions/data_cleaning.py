@@ -300,3 +300,12 @@ def remove_poor_features_single(df: pl.DataFrame):
             "tot_hi_cred_lim",
         ],
     )
+
+
+def label_target_grades(df: pl.DataFrame):
+    df = df.with_columns(
+        pl.col("grade").map_dict(
+            {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7}
+        )
+    )
+    return df

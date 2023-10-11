@@ -13,13 +13,13 @@ from ray.tune.stopper import (
 )
 
 
-def objective(pipeline, params, X_train, y_train, X_val, y_val, n):
+def objective(pipeline, params, X_train, y_train, X_val, y_val, n, average="binary"):
     pipeline.set_params(**params)
     pipeline.fit(X_train, y_train)
     preds = pipeline.predict(X_val)
-    f1 = f1_score(y_val, preds)
-    print(f"Step {n} F-1 Score: {f1}")
-    return f1
+    score = f1_score(y_val, preds, average=average)
+    print(f"Step {n} F-1 Score: {score}")
+    return score
 
 
 class Trainable(tune.Trainable):
@@ -32,6 +32,7 @@ class Trainable(tune.Trainable):
         X_val,
         y_val,
         sample_size: int = 100000,
+        average: str = "binary",
     ):
         # config (dict): A dict of hyperparameters
         self.x = 0
@@ -42,6 +43,7 @@ class Trainable(tune.Trainable):
         self.X_val = X_val
         self.y_val = y_val
         self.sample_size = sample_size
+        self.average = average
 
         self.splitter_train = StratifiedShuffleSplit(
             n_splits=10, random_state=1, test_size=2, train_size=self.sample_size
@@ -64,13 +66,6 @@ class Trainable(tune.Trainable):
         for i, split_id in enumerate(self.split_test):
             self.split_idx_test[i] = split_id[0]
 
-        # self.y_val_stop = self.y_val[self.split_idx_test[0]]
-        # self.X_val_stop = pipeline["preprocess"].fit_transform(
-        #     self.X_val[self.split_idx_test[0]], self.y_val_stop
-        # )
-
-        # pipeline["model"].set_params(valid=[self.X_val_stop, self.y_val_stop])
-
     def step(self):
         score = objective(
             self.pipeline,
@@ -80,6 +75,7 @@ class Trainable(tune.Trainable):
             self.X_val[self.split_idx_test[self.x]],
             self.y_val[self.split_idx_test[self.x]],
             self.x,
+            self.average,
         )
         self.x += 1
         return {"score": score}
@@ -177,8 +173,8 @@ class Models:
             y_val: Union[pl.DataFrame, np.ndarray, pl.Series],
             n: int = 10,
             n_training: int = 10,
-            starting_params: Optional[Dict] = None,
             sample_size: int = 100000,
+            average: str = "binary",
         ):
             """
             Tune the model's hyperparameters using Optuna.
@@ -196,7 +192,7 @@ class Models:
             stopper = CombinedStopper(
                 MaximumIterationStopper(n_training),
                 TrialPlateauStopper(
-                    std=0.1,
+                    std=0.2,
                     grace_period=1,
                     num_results=3,
                     metric="score",
@@ -214,6 +210,7 @@ class Models:
                         X_val=X_val,
                         y_val=y_val,
                         sample_size=sample_size,
+                        average=average,
                     ),
                     resources={"CPU": 1},
                 ),
@@ -232,66 +229,6 @@ class Models:
             results = tuner.fit()
             self.best_params = results.get_best_result().config
             self.pipeline.set_params(**self.best_params)
-
-        # def cross_val(
-        #     self,
-        #     X: Union[pd.DataFrame, pd.Series],
-        #     y: Union[pd.Series, np.ndarray],
-        #     n: int = 10,
-        #     random_state: int = 1,
-        #     score: str = "f1",
-        # ):
-        #     """
-        #     Perform k-fold cross-validation for the model.
-
-        #     Parameters:
-        #         X : pd.DataFrame or pd.Series
-        #             The feature matrix.
-        #         y : pd.Series or np.ndarray
-        #             The target variable.
-        #         n : int, optional
-        #             Number of cross-validation folds. Default is 10.
-        #         random_state : int, optional
-        #             Random seed for shuffling data during cross-validation. Default is 1.
-        #         score : str, optional
-        #             Scoring metric for cross-validation. Default is "f1".
-        #     """
-        #     kf = StratifiedKFold(n_splits=n, shuffle=True, random_state=random_state)
-        #     self.cv_results = cross_val_score(
-        #         self.pipeline, X, y, cv=kf, scoring=score, n_jobs=2
-        #     )
-
-        # def calc_perm_importances(
-        #     self,
-        #     X: Union[pd.DataFrame, pd.Series],
-        #     y: Union[pd.Series, np.ndarray],
-        #     score: str = "f1",
-        #     n: int = 10,
-        #     random_seed: int = 1,
-        # ):
-        #     """
-        #     Calculate feature importances using permutation importance.
-
-        #     Parameters:
-        #         X : pd.DataFrame or pd.Series
-        #             The feature matrix.
-        #         y : pd.Series or np.ndarray
-        #             The target variable.
-        #         score : str, optional
-        #             Scoring metric for permutation importance. Default is "f1".
-        #         n : int, optional
-        #             Number of permutation iterations. Default is 10.
-        #         random_seed : int, optional
-        #             Random seed for reproducibility. Default is 1.
-        #     """
-        #     self.permut_importances = permutation_importance(
-        #         self.pipeline["model"],
-        #         self.pipeline["preprocess"].transform(X),
-        #         y,
-        #         scoring=score,
-        #         n_repeats=n,
-        #         random_state=random_seed,
-        #     )
 
     def add_model(
         self,
@@ -342,6 +279,7 @@ class Models:
         score: str = "f1",
         n: int = 10,
         sample_size: int = 100000,
+        average: str = "binary",
     ):
         """
         Tune and cross-validate all models in the container.
@@ -365,9 +303,16 @@ class Models:
                     y_val,
                     n=model.override_n,
                     sample_size=sample_size,
+                    average=average,
                 )
             else:
                 model.tune_model(
-                    X_train, y_train, X_val, y_val, n=n, sample_size=sample_size
+                    X_train,
+                    y_train,
+                    X_val,
+                    y_val,
+                    n=n,
+                    sample_size=sample_size,
+                    average=average,
                 )
-            print(f"{name} tuned:")
+            print(f"{name} tuned.")

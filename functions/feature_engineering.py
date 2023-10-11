@@ -90,6 +90,11 @@ def date_difference(df: pl.DataFrame, date_col1, date_col2, alias_col):
     return df
 
 
+def date_features_accepted_rejected(df: pl.DataFrame, date_col: str):
+    df = df.pipe(month_cyclic_features, date_col).pipe(drop_column, date_col)
+    return df
+
+
 def date_features(df: pl.DataFrame, date_col: str):
     df = (
         df.pipe(month_cyclic_features, date_col)
