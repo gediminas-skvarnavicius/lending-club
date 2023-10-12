@@ -392,6 +392,7 @@ class TargetMeanOrderedLabeler(BaseEstimator, TransformerMixin):
         self.how = how
 
     def fit(self, X: pl.Series, y: pl.Series):
+        self.map = {}
         self.sort_df = pl.DataFrame([X, y]).group_by(X.name).mean().sort(y.name)
         if self.how == "label":
             for i, val in enumerate(self.sort_df[X.name]):
@@ -407,7 +408,7 @@ class TargetMeanOrderedLabeler(BaseEstimator, TransformerMixin):
 
 
 class FeatureRemover(BaseEstimator, TransformerMixin):
-    def __init__(self, feats_to_drop: Iterable[str] = "mean") -> None:
+    def __init__(self, feats_to_drop: Iterable[str] = []) -> None:
         self.feats_to_drop = feats_to_drop
 
     def fit(self, X: pl.DataFrame, y: pl.Series):

@@ -46,12 +46,12 @@ class Trainable(tune.Trainable):
         self.average = average
 
         self.splitter_train = StratifiedShuffleSplit(
-            n_splits=10, random_state=1, test_size=2, train_size=self.sample_size
+            n_splits=10, random_state=1, test_size=100, train_size=self.sample_size
         )
         self.splitter_test = StratifiedShuffleSplit(
             n_splits=10,
             random_state=1,
-            test_size=2,
+            test_size=100,
             train_size=int(self.sample_size / 3),
         )
 
