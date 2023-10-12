@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
-from typing import Any, Tuple, Optional
+from typing import Any, Tuple, Optional, Union, List
 import seaborn as sns
+from sklearn.metrics import roc_curve, roc_auc_score  # type: ignore
 
 
 def plot_x_axis_break(ax1: plt.Axes, ax2: plt.Axes, d: float = 1.5, **kwargs) -> None:
@@ -128,7 +129,7 @@ def create_heatmap(
     ax: plt.Axes,
     sample_size: int = None,
     seed: int = 1,
-    **kwargs
+    **kwargs,
 ) -> None:
     """
     Create a heatmap using data from a Polars DataFrame.
@@ -204,5 +205,51 @@ def aggregate_by_column(
     return aggregated_table
 
 
-# Example usage:
-# applications_by_month = aggregate_by_column(data_full, "month", "Policy Code")
+def plot_roc_curve(
+    y_test: Union[List[int], np.ndarray],
+    predictions: Union[List[float], np.ndarray],
+    ax: plt.Axes = None,
+    **subplots_kwargs,
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Plots the Receiver Operating Characteristic (ROC) curve with the
+    Area Under the Curve (AUC) score.
+
+    Parameters:
+        y_test (List[int] or np.ndarray):
+        True binary labels for the test set.
+
+        predictions (List[float] or np.ndarray):
+        Predicted probabilities for the positive class.
+
+        base_fig_width (int, optional):
+        Width of the generated plot in inches. Default is 8.
+
+        base_fig_height (int, optional):
+        Height of the generated plot in inches. Default is 6.
+
+    Returns:
+        Tuple[plt.Figure, plt.Axes]:
+        The generated matplotlib Figure and Axes objects.
+
+    Example:
+        y_test = [0, 1, 1, 0, 1]
+        predictions = [0.1, 0.8, 0.6, 0.2, 0.9]
+        fig, ax = plot_roc_curve(y_test, predictions)
+        plt.show()
+    """
+    fpr, tpr, thresholds = roc_curve(y_test, predictions)
+    auc_score = roc_auc_score(y_test, predictions)
+
+    if ax:
+        ax_combo_roc = ax
+    else:
+        fig_combo_roc, ax_combo_roc = plt.subplots(**subplots_kwargs)
+    ax_combo_roc.plot(fpr, tpr, label="ROC curve (AUC = %0.2f)" % auc_score)
+    ax_combo_roc.plot([0, 1], [0, 1], "k--")  # Random guessing line
+    ax_combo_roc.set_xlabel("False Positive Rate")
+    ax_combo_roc.set_ylabel("True Positive Rate")
+    ax_combo_roc.legend(loc="lower right")
+
+    if not ax:
+        return fig_combo_roc, ax_combo_roc
