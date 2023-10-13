@@ -215,7 +215,6 @@ def clean_accepted_rejected(df):
         .pipe(categorize_strings_is, title_categories_exact, "title")
         .pipe(replace_below_min, "Amount Requested", 1, None)
         .pipe(replace_below_min, "Debt-To-Income Ratio", 0, None)
-        # .pipe(winsorize_column, "Debt-To-Income Ratio", 0.9)
     )
     return df
 
@@ -278,8 +277,10 @@ def remove_poor_features_joint(df: pl.DataFrame):
 
 
 def remove_poor_features_single(df: pl.DataFrame):
-    df = df.pipe(drop_column, highly_correlated_features).pipe(
-        drop_column, irrelevant_features
+    df = (
+        df.pipe(drop_column, highly_correlated_features)
+        .pipe(drop_column, irrelevant_features)
+        .pipe(drop_column, joint_app_features)
     )
     return df
 
@@ -393,4 +394,24 @@ irrelevant_features = [
     "tot_coll_amt",
     "orig_projected_additional_accrued_interest",
     "title",
+    "installment",
+]
+
+joint_app_features = [
+    "annual_inc_joint",
+    "dti_joint",
+    "verification_status_joint",
+    "revol_bal_joint",
+    "sec_app_fico_range_low",
+    "sec_app_fico_range_high",
+    "sec_app_earliest_cr_line",
+    "sec_app_inq_last_6mths",
+    "sec_app_mort_acc",
+    "sec_app_open_acc",
+    "sec_app_revol_util",
+    "sec_app_open_act_il",
+    "sec_app_num_rev_accts",
+    "sec_app_chargeoff_within_12_mths",
+    "sec_app_collections_12_mths_ex_med",
+    "sec_app_mths_since_last_major_derog",
 ]
