@@ -276,10 +276,7 @@ class Models:
         y_train: Union[pl.DataFrame, np.ndarray, pl.Series],
         X_val: Union[pl.DataFrame, np.ndarray, pl.Series],
         y_val: Union[pl.DataFrame, np.ndarray, pl.Series],
-        score: str = "f1",
-        n: int = 10,
-        sample_size: int = 100000,
-        average: str = "binary",
+        **kwargs,
     ):
         """
         Tune and cross-validate all models in the container.
@@ -296,23 +293,6 @@ class Models:
         """
         for name, model in self.models.items():
             if model.override_n:
-                model.tune_model(
-                    X_train,
-                    y_train,
-                    X_val,
-                    y_val,
-                    n=model.override_n,
-                    sample_size=sample_size,
-                    average=average,
-                )
-            else:
-                model.tune_model(
-                    X_train,
-                    y_train,
-                    X_val,
-                    y_val,
-                    n=n,
-                    sample_size=sample_size,
-                    average=average,
-                )
+                kwargs["n"] = model.override_n
+            model.tune_model(X_train, y_train, X_val, y_val, **kwargs)
             print(f"{name} tuned.")

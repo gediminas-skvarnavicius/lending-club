@@ -269,37 +269,19 @@ def clean_accepted_joint(df: pl.DataFrame):
 
 
 def remove_poor_features_joint(df: pl.DataFrame):
-    df = df.pipe(
-        drop_column,  # poor relation to target
-        [
-            "disbursement_method",
-            "num_tl_120dpd_2m",
-            "delinq_amnt",
-            "mths_since_last_major_derog",
-            "mths_since_last_record",
-            "pymnt_plan",
-        ].pipe(
-            drop_column,  # highly correlated
-            [
-                "funded_amnt",
-                "funded_amnt_inv",
-                "total_bal_ex_mort",
-                "tot_hi_cred_lim",
-            ],
-        ),
+    df = (
+        df.pipe(drop_column, poor_features)
+        .pipe(drop_column, highly_correlated_features)
+        .pipe(drop_column, irrelevant_features)
     )
+    return df
 
 
 def remove_poor_features_single(df: pl.DataFrame):
-    df = df.pipe(
-        drop_column,  # highly correlated
-        [
-            "funded_amnt",
-            "funded_amnt_inv",
-            "total_bal_ex_mort",
-            "tot_hi_cred_lim",
-        ],
+    df = df.pipe(drop_column, highly_correlated_features).pipe(
+        drop_column, irrelevant_features
     )
+    return df
 
 
 def label_target_grades(df: pl.DataFrame):
@@ -309,3 +291,106 @@ def label_target_grades(df: pl.DataFrame):
         )
     )
     return df
+
+
+def label_target_sub_grades(df):
+    grade_mapping = {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5,
+        "B1": 6,
+        "B2": 7,
+        "B3": 8,
+        "B4": 9,
+        "B5": 10,
+        "C1": 11,
+        "C2": 12,
+        "C3": 13,
+        "C4": 14,
+        "C5": 15,
+        "D1": 16,
+        "D2": 17,
+        "D3": 18,
+        "D4": 19,
+        "D5": 20,
+        "E1": 21,
+        "E2": 22,
+        "E3": 23,
+        "E4": 24,
+        "E5": 25,
+        "F1": 26,
+        "F2": 27,
+        "F3": 28,
+        "F4": 29,
+        "F5": 30,
+        "G1": 31,
+        "G2": 32,
+        "G3": 33,
+        "G4": 34,
+        "G5": 35,
+    }
+    df = df.with_columns(pl.col("sub_grade").map_dict(grade_mapping))
+    return df
+
+
+poor_features = [
+    "disbursement_method",
+    "num_tl_120dpd_2m",
+    "delinq_amnt",
+    "mths_since_last_major_derog",
+    "mths_since_last_record",
+    "pymnt_plan",
+]
+highly_correlated_features = [
+    "funded_amnt",
+    "funded_amnt_inv",
+    "total_bal_ex_mort",
+    "tot_hi_cred_lim",
+]
+irrelevant_features = [
+    "id",
+    "member_id",
+    "desc",
+    "url",
+    "policy_code",
+    "payment_plan_start_date",
+    "hardship_flag",
+    "hardship_type",
+    "hardship_reason",
+    "hardship_status",
+    "hardship_amount",
+    "hardship_start_date",
+    "hardship_end_date",
+    "hardship_length",
+    "hardship_dpd",
+    "hardship_loan_status",
+    "hardship_payoff_balance_amount",
+    "hardship_last_payment_amount",
+    "debt_settlement_flag",
+    "debt_settlement_flag_date",
+    "settlement_status",
+    "settlement_date",
+    "settlement_amount",
+    "settlement_percentage",
+    "settlement_term",
+    "deferral_term",
+    "loan_status",
+    "out_prncp",
+    "out_prncp_inv",
+    "total_pymnt",
+    "total_pymnt_inv",
+    "total_rec_prncp",
+    "total_rec_int",
+    "total_rec_late_fee",
+    "recoveries",
+    "collection_recovery_fee",
+    "last_pymnt_d",
+    "last_pymnt_amnt",
+    "next_pymnt_d",
+    "collections_12_mths_ex_med",
+    "tot_coll_amt",
+    "orig_projected_additional_accrued_interest",
+    "title",
+]
