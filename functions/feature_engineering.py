@@ -90,6 +90,11 @@ def date_difference(df: pl.DataFrame, date_col1, date_col2, alias_col):
     return df
 
 
+def get_year(df: pl.DataFrame, date_col):
+    df = df.with_columns(pl.col(date_col).dt.year().alias("year"))
+    return df
+
+
 def date_features_accepted_rejected(df: pl.DataFrame, date_col: str):
     df = df.pipe(month_cyclic_features, date_col).pipe(drop_column, date_col)
     return df
@@ -100,6 +105,24 @@ def date_features(df: pl.DataFrame, date_col: str):
         df.pipe(month_cyclic_features, date_col)
         .pipe(date_difference, date_col, "earliest_cr_line", "earliest_cr_line")
         .pipe(date_difference, date_col, "last_credit_pull_d", "last_credit_pull_d")
+        .pipe(get_year, date_col)
+        .pipe(drop_column, date_col)
+    )
+    return df
+
+
+def date_features_joint(df: pl.DataFrame, date_col: str):
+    df = (
+        df.pipe(month_cyclic_features, date_col)
+        .pipe(date_difference, date_col, "earliest_cr_line", "earliest_cr_line")
+        .pipe(date_difference, date_col, "last_credit_pull_d", "last_credit_pull_d")
+        .pipe(
+            date_difference,
+            date_col,
+            "sec_app_earliest_cr_line",
+            "sec_app_earliest_cr_line",
+        )
+        .pipe(get_year, date_col)
         .pipe(drop_column, date_col)
     )
     return df

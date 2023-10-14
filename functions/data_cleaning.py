@@ -54,23 +54,6 @@ def categorize_strings_is(
     return data
 
 
-# def create_bins(data: np.ndarray, number: int, log: bool = False) -> np.ndarray:
-#     """Creates bins from min to max of specified data"""
-#     min_val_zero = False
-#     if not log:
-#         bins: np.ndarray = np.linspace(data.min(), data.max(), number)
-#     else:
-#         min_val = data.min()
-#         max_val = data.max()
-#         if min_val == 0:
-#             min_val = np.partition(data, 1)[1]
-#             min_val_zero = True
-#         bins = np.logspace(np.log10(min_val), np.log10(max_val), number)
-#         if min_val_zero == True:
-#             bins[0] = 0
-#     return bins
-
-
 def lowercase_underscore_text(
     df: pl.DataFrame, col: str, new_col_name: str
 ) -> pl.DataFrame:
@@ -255,10 +238,12 @@ def clean_accepted_joint(df: pl.DataFrame):
         .pipe(categorize_strings_contains, title_categories_contains, "emp_title")
         .pipe(categorize_strings_is, title_categories_is, "emp_title")
         .pipe(text_int_to_num, ["term"])
+        .pipe(text_int_to_num, joint_string_num_cols)
         .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
         .pipe(str_to_date, ["issue_d"], "%b-%Y")
         .pipe(str_to_date, ["last_credit_pull_d"], "%b-%Y")
+        .pipe(str_to_date, ["sec_app_earliest_cr_line"], "%b-%Y")
         .pipe(replace_below_min, "dti", 0, None)
         .pipe(cast_str_to_float, "revol_bal_joint")
         .pipe(cast_str_to_float, "sec_app_revol_util")
@@ -409,6 +394,19 @@ joint_app_features = [
     "sec_app_mort_acc",
     "sec_app_open_acc",
     "sec_app_revol_util",
+    "sec_app_open_act_il",
+    "sec_app_num_rev_accts",
+    "sec_app_chargeoff_within_12_mths",
+    "sec_app_collections_12_mths_ex_med",
+    "sec_app_mths_since_last_major_derog",
+]
+
+joint_string_num_cols = [
+    "sec_app_fico_range_low",
+    "sec_app_fico_range_high",
+    "sec_app_inq_last_6mths",
+    "sec_app_mort_acc",
+    "sec_app_open_acc",
     "sec_app_open_act_il",
     "sec_app_num_rev_accts",
     "sec_app_chargeoff_within_12_mths",

@@ -377,7 +377,8 @@ class BorutaFeatureSelectorPolars(BaseEstimator, TransformerMixin):
         Returns:
         --------
         X_selected : pd.DataFrame
-            A DataFrame with selected features if apply is True; otherwise, it returns the input data.
+            A DataFrame with selected features if apply is True; otherwise,
+            it returns the input data.
         """
         # Transform the data to select the relevant features
         if self.apply:
@@ -394,12 +395,23 @@ class TargetMeanOrderedLabeler(BaseEstimator, TransformerMixin):
     def fit(self, X: pl.Series, y: pl.Series):
         self.map = {}
         self.sort_df = pl.DataFrame([X, y]).group_by(X.name).mean().sort(y.name)
+
+        if self.how not in ["label", "mean", "last_mean"]:
+            raise ValueError(
+                """Invalid value for 'how' argument.
+                Accepted values are 'label', 'mean', or 'last_mean'."""
+            )
+
         if self.how == "label":
             for i, val in enumerate(self.sort_df[X.name]):
                 self.map[val] = i
         if self.how == "mean":
             for mean, val in zip(self.sort_df[y.name], self.sort_df[X.name]):
                 self.map[val] = mean
+        if self.how == "last_mean":
+            for mean, val in zip(self.sort_df[y.name], self.sort_df[X.name]):
+                self.map[val + 1] = mean
+                self.map[self.sort_df[X.name].min()] = None
         return self
 
     def transform(self, X: pl.Series, y=None):
