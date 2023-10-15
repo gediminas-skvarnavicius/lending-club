@@ -118,3 +118,19 @@ def calc_vif(X):
     )
 
     return vif.sort("VIF", descending=True)
+
+
+def oversample_polars(
+    data: pl.DataFrame(),
+    target_column,
+    min_value,
+):
+    over_sample = pl.DataFrame()
+    value_counts = data[target_column].value_counts()
+    for value, count in zip(value_counts[target_column], value_counts["counts"]):
+        if count < min_value:
+            for i in range(int(min_value / count)):
+                over_sample = over_sample.vstack(
+                    data.filter(data[target_column] == value)
+                )
+    return over_sample

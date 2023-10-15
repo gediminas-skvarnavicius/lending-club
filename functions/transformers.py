@@ -429,3 +429,33 @@ class FeatureRemover(BaseEstimator, TransformerMixin):
     def transform(self, X: pl.DataFrame, y=None):
         X = X.drop(columns=self.feats_to_drop)
         return X
+
+
+class RoundToRangeTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, min_value=0, max_value=1):
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def fit(self, X, y=None):
+        return self
+
+    def predict(self, X):
+        # Round values to the nearest integer within the specified range
+        return np.clip(np.round(X), self.min_value, self.max_value).astype(int)
+
+
+class ModelWrapper(BaseEstimator, TransformerMixin):
+    def __init__(self, model, param_grid={}):
+        self.model = model
+        self.param_grid = param_grid
+
+    def fit(self, X, y):
+        # Fit the model during the fit step
+        self.model.set_params(**self.param_grid)
+        self.model.fit(X, y)
+        return self
+
+    def transform(self, X):
+        # Return predictions during the transform step
+        predictions = self.model.predict(X)
+        return predictions
