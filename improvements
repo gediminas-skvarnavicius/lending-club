@@ -1,3 +1,4 @@
 Better model evaluation with cost-benefit of missed loans/grades, 
 Probability Calibration
 Tune Oversampling of the data alongside the hyperparameters
+Analize models performance in accordance to date

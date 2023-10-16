@@ -1,11 +1,11 @@
 from ray import tune, train
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, mean_squared_error
 from typing import Optional, Dict, Union
 import polars as pl
 import numpy as np
 from sklearn.pipeline import Pipeline
 from ray.tune.search.optuna import OptunaSearch
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from ray.tune.stopper import (
     CombinedStopper,
     MaximumIterationStopper,
@@ -17,7 +17,10 @@ def objective(pipeline, params, X_train, y_train, X_val, y_val, n, average="bina
     pipeline.set_params(**params)
     pipeline.fit(X_train, y_train)
     preds = pipeline.predict(X_val)
-    score = f1_score(y_val, preds, average=average)
+    if average != "rmse":
+        score = f1_score(y_val, preds, average=average)
+    if average == "rmse":
+        score = -mean_squared_error(y_val, preds)
     print(f"Step {n} F-1 Score: {score}")
     return score
 
@@ -31,8 +34,9 @@ class Trainable(tune.Trainable):
         y_train,
         X_val,
         y_val,
-        sample_size: int = 100000,
+        sample_size: Union[int, str] = 100000,
         average: str = "binary",
+        stratify=True,
     ):
         # config (dict): A dict of hyperparameters
         self.x = 0
@@ -45,35 +49,63 @@ class Trainable(tune.Trainable):
         self.sample_size = sample_size
         self.average = average
 
-        self.splitter_train = StratifiedShuffleSplit(
-            n_splits=10, random_state=1, test_size=100, train_size=self.sample_size
-        )
-        self.splitter_test = StratifiedShuffleSplit(
-            n_splits=10,
-            random_state=1,
-            test_size=100,
-            train_size=int(self.sample_size / 3),
-        )
+        if self.sample_size != "all":
+            if stratify:
+                self.splitter_train = StratifiedShuffleSplit(
+                    n_splits=10,
+                    random_state=1,
+                    test_size=100,
+                    train_size=self.sample_size,
+                )
+                self.splitter_test = StratifiedShuffleSplit(
+                    n_splits=10,
+                    random_state=1,
+                    test_size=100,
+                    train_size=int(self.sample_size / 3),
+                )
+            else:
+                self.splitter_train = ShuffleSplit(
+                    n_splits=10,
+                    random_state=1,
+                    test_size=100,
+                    train_size=self.sample_size,
+                )
+                self.splitter_test = ShuffleSplit(
+                    n_splits=10,
+                    random_state=1,
+                    test_size=100,
+                    train_size=int(self.sample_size / 3),
+                )
 
-        self.split_train = self.splitter_train.split(self.X_train, self.y_train)
-        self.split_test = self.splitter_test.split(self.X_val, self.y_val)
+            self.split_train = self.splitter_train.split(self.X_train, self.y_train)
+            self.split_test = self.splitter_test.split(self.X_val, self.y_val)
 
-        self.split_idx_train = {}
-        for i, split_id in enumerate(self.split_train):
-            self.split_idx_train[i] = split_id[0]
+            self.split_idx_train = {}
+            for i, split_id in enumerate(self.split_train):
+                self.split_idx_train[i] = split_id[0]
 
-        self.split_idx_test = {}
-        for i, split_id in enumerate(self.split_test):
-            self.split_idx_test[i] = split_id[0]
+            self.split_idx_test = {}
+            for i, split_id in enumerate(self.split_test):
+                self.split_idx_test[i] = split_id[0]
 
     def step(self):
+        if self.sample_size != "all":
+            X_train = self.X_train[self.split_idx_train[self.x]]
+            y_train = self.y_train[self.split_idx_train[self.x]]
+            X_val = self.X_val[self.split_idx_test[self.x]]
+            y_val = self.y_val[self.split_idx_test[self.x]]
+        else:
+            X_train = self.X_train
+            y_train = self.y_train
+            X_val = self.X_val
+            y_val = self.y_val
         score = objective(
             self.pipeline,
             self.params,
-            self.X_train[self.split_idx_train[self.x]],
-            self.y_train[self.split_idx_train[self.x]],
-            self.X_val[self.split_idx_test[self.x]],
-            self.y_val[self.split_idx_test[self.x]],
+            X_train,
+            y_train,
+            X_val,
+            y_val,
             self.x,
             self.average,
         )
@@ -175,6 +207,7 @@ class Models:
             n_training: int = 10,
             sample_size: int = 100000,
             average: str = "binary",
+            stratify=True,
         ):
             """
             Tune the model's hyperparameters using Optuna.
@@ -211,6 +244,7 @@ class Models:
                         y_val=y_val,
                         sample_size=sample_size,
                         average=average,
+                        stratify=stratify,
                     ),
                     resources={"CPU": 2},
                 ),
