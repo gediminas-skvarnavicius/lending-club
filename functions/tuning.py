@@ -212,7 +212,7 @@ class Models:
                         sample_size=sample_size,
                         average=average,
                     ),
-                    resources={"CPU": 1},
+                    resources={"CPU": 2},
                 ),
                 run_config=train.RunConfig(
                     stop=stopper,

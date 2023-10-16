@@ -271,53 +271,12 @@ def remove_poor_features_single(df: pl.DataFrame):
 
 
 def label_target_grades(df: pl.DataFrame):
-    df = df.with_columns(
-        pl.col("grade").map_dict(
-            {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7}
-        )
-    )
+    df = df.with_columns(pl.col("grade").map_dict(grade_mapping))
     return df
 
 
 def label_target_sub_grades(df):
-    grade_mapping = {
-        "A1": 1,
-        "A2": 2,
-        "A3": 3,
-        "A4": 4,
-        "A5": 5,
-        "B1": 6,
-        "B2": 7,
-        "B3": 8,
-        "B4": 9,
-        "B5": 10,
-        "C1": 11,
-        "C2": 12,
-        "C3": 13,
-        "C4": 14,
-        "C5": 15,
-        "D1": 16,
-        "D2": 17,
-        "D3": 18,
-        "D4": 19,
-        "D5": 20,
-        "E1": 21,
-        "E2": 22,
-        "E3": 23,
-        "E4": 24,
-        "E5": 25,
-        "F1": 26,
-        "F2": 27,
-        "F3": 28,
-        "F4": 29,
-        "F5": 30,
-        "G1": 31,
-        "G2": 32,
-        "G3": 33,
-        "G4": 34,
-        "G5": 35,
-    }
-    df = df.with_columns(pl.col("sub_grade").map_dict(grade_mapping))
+    df = df.with_columns(pl.col("sub_grade").map_dict(subgrade_mapping))
     return df
 
 
@@ -413,3 +372,43 @@ joint_string_num_cols = [
     "sec_app_collections_12_mths_ex_med",
     "sec_app_mths_since_last_major_derog",
 ]
+
+grade_mapping = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7}
+
+subgrade_mapping = {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "A4": 4,
+    "A5": 5,
+    "B1": 6,
+    "B2": 7,
+    "B3": 8,
+    "B4": 9,
+    "B5": 10,
+    "C1": 11,
+    "C2": 12,
+    "C3": 13,
+    "C4": 14,
+    "C5": 15,
+    "D1": 16,
+    "D2": 17,
+    "D3": 18,
+    "D4": 19,
+    "D5": 20,
+    "E1": 21,
+    "E2": 22,
+    "E3": 23,
+    "E4": 24,
+    "E5": 25,
+    "F1": 26,
+    "F2": 27,
+    "F3": 28,
+    "F4": 29,
+    "F5": 30,
+    "G1": 31,
+    "G2": 32,
+    "G3": 33,
+    "G4": 34,
+    "G5": 35,
+}
