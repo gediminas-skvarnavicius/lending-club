@@ -17,9 +17,9 @@ def objective(pipeline, params, X_train, y_train, X_val, y_val, n, average="bina
     pipeline.set_params(**params)
     pipeline.fit(X_train, y_train)
     preds = pipeline.predict(X_val)
-    if average != "rmse":
+    if average != "mse":
         score = f1_score(y_val, preds, average=average)
-    if average == "rmse":
+    if average == "mse":
         score = -mean_squared_error(y_val, preds)
     print(f"Step {n} F-1 Score: {score}")
     return score
