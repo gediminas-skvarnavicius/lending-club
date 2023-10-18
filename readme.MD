@@ -1,4 +1,3 @@
-
 # Lending Club Loan Acceptance and Quality Prediciton
 
 ## Introduciton
