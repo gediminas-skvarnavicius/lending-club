@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union, List
 import polars as pl
 
 # import numpy as np
@@ -131,7 +131,25 @@ def winsorize_column(
     return df_winsorized
 
 
-def text_int_to_num(data: pl.DataFrame, cols):
+def text_int_to_num(data: pl.DataFrame, cols: list) -> pl.DataFrame:
+    """
+    Convert text containing integers to numerical values in specified columns.
+
+    This function takes a Polars DataFrame and a list of column names. It converts
+    text values within these columns that contain integers to numerical values.
+
+    Parameters:
+    -----------
+    data : pl.DataFrame
+        The input Polars DataFrame.
+    cols : list of str
+        List of column names containing text values with integers to be converted.
+
+    Returns:
+    --------
+    data : pl.DataFrame
+        The input Polars DataFrame with text values containing integers converted to numerical values.
+    """
     for col in cols:
         data = data.with_columns(
             pl.col(col)
@@ -146,7 +164,28 @@ def cast_str_to_float(data, col_name):
     return data.with_columns(pl.col(col_name).cast(pl.Float32))
 
 
-def str_to_date(data: pl.DataFrame, cols, fmt):
+def str_to_date(data: pl.DataFrame, cols: Union[str, list], fmt: str):
+    """
+    Convert strings to date values in specified columns using the specified format.
+
+    This function takes a Polars DataFrame, a column name or a list of column names, and
+    a format string or a list of format strings. It converts the string values within
+    the specified columns to date values using the specified format(s).
+
+    Parameters:
+    -----------
+    data : pl.DataFrame
+        The input Polars DataFrame.
+    cols : Union[str, List[str]]
+        Either a column name or a list of column names containing string values to be converted.
+    fmt : Union[str, List[str]]
+        Either a format string or a list of format strings used for date conversion.
+
+    Returns:
+    --------
+    data : pl.DataFrame
+        The input Polars DataFrame with string values converted to date values in the specified columns.
+    """
     for col in cols:
         if isinstance(fmt, list):
             tmp_names = []

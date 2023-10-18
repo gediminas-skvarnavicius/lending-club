@@ -2,7 +2,27 @@ import polars as pl
 import numpy as np
 
 
-def month_cyclic_features(data: pl.DataFrame, col):
+def month_cyclic_features(data: pl.DataFrame, col: str) -> pl.DataFrame:
+    """
+    Create cyclic features for the month from a datetime column.
+
+    This function takes a Polars DataFrame and a column containing datetime values.
+    It adds two new columns, 'month_sin' and 'month_cos', which represent the month
+    cyclically using sine and cosine functions. These features can help capture the
+    cyclical patterns in monthly data.
+
+    Parameters:
+    -----------
+    data : pl.DataFrame
+        The input Polars DataFrame containing datetime values.
+    col : str
+        The name of the column containing datetime values.
+
+    Returns:
+    --------
+    data : pl.DataFrame
+        The input Polars DataFrame with added 'month_sin' and 'month_cos' features.
+    """
     data = data.with_columns(
         pl.col(col)
         .dt.month()
@@ -85,12 +105,56 @@ def drop_column(df: pl.DataFrame, col_to_drop: str):
     return df.drop(columns=col_to_drop)
 
 
-def date_difference(df: pl.DataFrame, date_col1, date_col2, alias_col):
+def date_difference(
+    df: pl.DataFrame, date_col1: str, date_col2: str, alias_col: str
+) -> pl.DataFrame:
+    """
+    Calculate the difference in days between two date columns and create a new column.
+
+    This function takes a Polars DataFrame and two columns containing date values.
+    It calculates the difference in days between the dates in these columns and creates
+    a new column with the specified alias to store the computed differences.
+
+    Parameters:
+    -----------
+    df : pl.DataFrame
+        The input Polars DataFrame.
+    date_col1 : str
+        The name of the first date column.
+    date_col2 : str
+        The name of the second date column.
+    alias_col : str
+        The alias for the new column that will store the date differences.
+
+    Returns:
+    --------
+    df : pl.DataFrame
+        The input Polars DataFrame with the new column containing date differences.
+    """
     df = df.with_columns((df[date_col1] - df[date_col2]).dt.days().alias(alias_col))
     return df
 
 
-def get_year(df: pl.DataFrame, date_col):
+def get_year(df: pl.DataFrame, date_col: str) -> pl.DataFrame:
+    """
+    Extract the year from a date column and create a new 'year' column.
+
+    This function takes a Polars DataFrame and a column containing date values.
+    It extracts the year from the date values and creates a new 'year' column to store
+    the extracted years.
+
+    Parameters:
+    -----------
+    df : pl.DataFrame
+        The input Polars DataFrame.
+    date_col : str
+        The name of the column containing date values.
+
+    Returns:
+    --------
+    df : pl.DataFrame
+        The input Polars DataFrame with the new 'year' column.
+    """
     df = df.with_columns(pl.col(date_col).dt.year().alias("year"))
     return df
 

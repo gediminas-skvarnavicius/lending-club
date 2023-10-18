@@ -3,7 +3,12 @@ from fastapi.templating import Jinja2Templates
 import polars as pl
 import functions.data_cleaning as dmf
 import functions.feature_engineering as feats
-from pydantic import BaseModel
+from requests_responses import (
+    LoanDataInitial,
+    PredictionResponse,
+    LoanQualityData,
+    QualityResponse,
+)
 from model import (
     model_accept_reject,
     model_joint_grade,
@@ -15,30 +20,12 @@ from model import (
 )
 from model import __version__ as model_version
 
+
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-
-class LoanDataInitial(BaseModel):
-    """
-    Pydantic model for incoming prediction requests.
-    """
-
-    Application_Date: str
-    Amount_Requested: float
-    Loan_Title: str
-    Debt_To_Income_Ratio: float
-    Zip_Code: str
-    State: str
-    Employment_Length: str
-
-
-class PredictionResponse(BaseModel):
-    """
-    Pydantic model for prediction responses.
-    """
-
-    Decision: str
+inv_grade_map = {v: k for k, v in dmf.grade_mapping.items()}
+inv_subgrade_map = {v: k for k, v in dmf.subgrade_mapping.items()}
 
 
 @app.get("/")
@@ -57,7 +44,7 @@ async def home(request: Request):
     )
 
 
-@app.post("/predict", response_model=PredictionResponse)
+@app.post("/loan_acceptance", response_model=PredictionResponse)
 async def predict_endpoint(data: LoanDataInitial):
     """
     Predict endpoint that makes predictions based on input data.
@@ -86,3 +73,34 @@ async def predict_endpoint(data: LoanDataInitial):
     prediction = model_accept_reject.predict(data_df)
     decision = {0: "Rejected", 1: "Accepted"}[prediction[0]]
     return {"Decision": decision}
+
+
+@app.post("/loan_quality", response_model=QualityResponse)
+async def secondary_predict_endpoint(data: LoanQualityData):
+    data_df = pl.DataFrame(data.model_dump())
+    print(data_df["application_type"][0])
+    if data_df["application_type"][0] == "Joint App":
+        data_df = dmf.clean_accepted_joint(data_df)
+        data_df = dmf.remove_poor_features_joint(data_df)
+        data_df = feats.date_features_joint(data_df, "issue_d")
+        grade = model_joint_grade.predict(data_df)[0]
+        sub_grade = model_joint_subgrade.predict(data_df)[0]
+        int_rate = model_joint_intr.predict(data_df)[0]
+
+    elif data_df["application_type"][0] == "Individual":
+        data_df = dmf.clean_accepted_single(data_df)
+        data_df = dmf.remove_poor_features_single(data_df)
+        data_df = feats.date_features(data_df, "issue_d")
+        grade = model_single_grade.predict(data_df)[0]
+        sub_grade = model_single_subgrade.predict(data_df)[0]
+        int_rate = model_single_intr.predict(data_df)[0]
+
+    else:
+        pass
+
+    response = {
+        "Grade": inv_grade_map[grade],
+        "SubGrade": inv_subgrade_map[sub_grade],
+        "InterestRate": int_rate,
+    }
+    return response
