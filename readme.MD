@@ -259,7 +259,7 @@ You can use the FastAPI documentation to test the endpoints with sample data.
     "settlement_date": null,
     "settlement_amount": null,
     "settlement_percentage": null,
-    "settlement_term": null,
+    "settlement_term": null
 }
 ```
 ##### Loan Quality Single Applicant:
@@ -412,6 +412,6 @@ You can use the FastAPI documentation to test the endpoints with sample data.
     "settlement_date": null,
     "settlement_amount": null,
     "settlement_percentage": null,
-    "settlement_term": null,
+    "settlement_term": null
 }
 ```
