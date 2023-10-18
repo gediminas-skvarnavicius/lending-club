@@ -87,6 +87,7 @@ This project offers several avenues for immediate improvement:
 3. Enhanced oversampling techniques, ideally integrated into the pipeline and fine-tuned alongside hyperparameters.
 
 ## Deployment
+**The deployment/trained_models folder is missing due to size limitations and can be found [here](https://drive.google.com/drive/folders/1W2jyrLWF2tNkZvRP3eP7ahWieOCficxw?usp=sharing)**
 
 The project has been deployed as a single app with two response endpoints using FastAPI. The app has been dockerized, uploaded to Google Artifact Registry, and deployed on Cloud Run. You can access it at https://loan-prediction-ubfu2xlf7q-uc.a.run.app/.
 
