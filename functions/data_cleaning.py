@@ -1,4 +1,4 @@
-from typing import Dict, Union, List
+from typing import Dict, Union
 import polars as pl
 
 # import numpy as np
@@ -8,7 +8,8 @@ def categorize_strings_contains(
     data: pl.DataFrame, category_mappings: Dict[str, list], col_name: str
 ) -> pl.DataFrame:
     """
-    Categorizes strings in a DataFrame column based on a mapping of categories to substrings.
+    Categorizes strings in a DataFrame column based on a mapping of
+    categories to substrings.
 
     Args:
         data (pl.DataFrame): The DataFrame containing the column to categorize.
@@ -76,7 +77,13 @@ def lowercase_underscore_text(
         pl.DataFrame: A new DataFrame with the edited column.
     """
     df = df.with_columns(pl.col(col).str.to_lowercase().alias(new_col_name))
-    df = df.with_columns(pl.col(new_col_name).str.replace(" ", "_").alias(new_col_name))
+    df = df.with_columns(
+        pl.col(new_col_name)
+        .str.replace(" ", "_")
+        .alias(
+            new_col_name,
+        )
+    )
     return df
 
 
@@ -208,7 +215,11 @@ def str_to_date(data: pl.DataFrame, cols: Union[str, list], fmt: str):
             tmp_names = []
             for i, f in enumerate(fmt):
                 data = data.with_columns(
-                    pl.col(col).str.to_date(f, strict=False).alias(f"date_{str(i)}")
+                    pl.col(col)
+                    .str.to_date(f, strict=False)
+                    .alias(
+                        f"date_{str(i)}",
+                    )
                 )
                 tmp_names.append(f"date_{str(i)}")
             data = data.with_columns(pl.coalesce(tmp_names).alias(col)).drop(
@@ -268,10 +279,18 @@ def clean_accepted_single(df: pl.DataFrame):
     df = (
         df.pipe(lowercase_underscore_text, "emp_title", "emp_title")
         .pipe(cut_leading_underscore, ["emp_title"])
-        .pipe(categorize_strings_contains, title_categories_contains, "emp_title")
+        .pipe(
+            categorize_strings_contains,
+            title_categories_contains,
+            "emp_title",
+        )
         .pipe(categorize_strings_is, title_categories_is, "emp_title")
         .pipe(text_int_to_num, ["term"])
-        .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
+        .pipe(
+            categorize_strings_is,
+            {"OTHER": ["NONE", "ANY"]},
+            "home_ownership",
+        )
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
         .pipe(str_to_date, ["issue_d"], "%b-%Y")
         .pipe(str_to_date, ["last_credit_pull_d"], "%b-%Y")
@@ -291,11 +310,19 @@ def clean_accepted_joint(df: pl.DataFrame):
     df = (
         df.pipe(lowercase_underscore_text, "emp_title", "emp_title")
         .pipe(cut_leading_underscore, ["emp_title"])
-        .pipe(categorize_strings_contains, title_categories_contains, "emp_title")
+        .pipe(
+            categorize_strings_contains,
+            title_categories_contains,
+            "emp_title",
+        )
         .pipe(categorize_strings_is, title_categories_is, "emp_title")
         .pipe(text_int_to_num, ["term"])
         .pipe(text_int_to_num, joint_string_num_cols)
-        .pipe(categorize_strings_is, {"OTHER": ["NONE", "ANY"]}, "home_ownership")
+        .pipe(
+            categorize_strings_is,
+            {"OTHER": ["NONE", "ANY"]},
+            "home_ownership",
+        )
         .pipe(str_to_date, ["earliest_cr_line"], "%b-%Y")
         .pipe(str_to_date, ["issue_d"], "%b-%Y")
         .pipe(str_to_date, ["last_credit_pull_d"], "%b-%Y")

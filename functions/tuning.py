@@ -58,9 +58,10 @@ class Trainable(tune.Trainable):
     """
     A custom Ray Tune trainable class for hyperparameter tuning.
 
-    This class is used to configure and execute hyperparameter tuning experiments
-    using Ray Tune. It sets up the necessary parameters and data for each trial,
-    and performs steps to evaluate the hyperparameter configurations.
+    This class is used to configure and execute hyperparameter
+    tuning experiments using Ray Tune. It sets up the necessary
+    parameters and data for each trial, and performs steps to
+    evaluate the hyperparameter configurations.
 
     Attributes:
     - config (dict): A dictionary of hyperparameters for the pipeline.
@@ -70,11 +71,12 @@ class Trainable(tune.Trainable):
     - X_val: Validation data features.
     - y_val: Validation data labels.
     - sample_size (Union[int, str]): The sample size for data splitting.
-    - average (str): The averaging strategy for the F1 score, either "binary" or "mse".
+    - average (str): The averaging strategy for the F1 score.
     - stratify (bool): Whether to stratify data splitting.
 
     Methods:
-    - setup(config, pipeline, X_train, y_train, X_val, y_val, sample_size, average, stratify):
+    - setup(config, pipeline, X_train, y_train, X_val, y_val, sample_size,
+    average, stratify):
         Set up the trainable object with hyperparameters and data.
 
     - step():
@@ -152,7 +154,10 @@ class Trainable(tune.Trainable):
                     train_size=int(self.sample_size / 3),
                 )
 
-            self.split_train = self.splitter_train.split(self.X_train, self.y_train)
+            self.split_train = self.splitter_train.split(
+                self.X_train,
+                self.y_train,
+            )
             self.split_test = self.splitter_test.split(self.X_val, self.y_val)
 
             self.split_idx_train = {}
@@ -331,12 +336,17 @@ class Models:
                 ),
                 run_config=train.RunConfig(
                     stop=stopper,
-                    storage_path=f"/tmp/tune_results/",
+                    storage_path="/tmp/tune_results/",
                     name=self.name,
-                    checkpoint_config=train.CheckpointConfig(checkpoint_at_end=False),
+                    checkpoint_config=train.CheckpointConfig(
+                        checkpoint_at_end=False,
+                    ),
                 ),
                 tune_config=tune.TuneConfig(
-                    search_alg=OptunaSearch(), mode="max", metric="score", num_samples=n
+                    search_alg=OptunaSearch(),
+                    mode="max",
+                    metric="score",
+                    num_samples=n,
                 ),
                 param_space=self.param_grid,
             )
