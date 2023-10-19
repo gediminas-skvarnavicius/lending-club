@@ -4,7 +4,7 @@ from typing import Optional
 
 class LoanDataInitial(BaseModel):
     """
-    Pydantic model for incoming prediction requests.
+    Pydantic model for incoming loan acceptance prediction requests.
     """
 
     Application_Date: str
@@ -17,6 +17,10 @@ class LoanDataInitial(BaseModel):
 
 
 class LoanQualityData(BaseModel):
+    """
+    Pydantic model for incoming loan quality prediction requests.
+    """
+
     id: Optional[str] = Field(..., nullable=True)
     member_id: Optional[str] = Field(..., nullable=True)
     loan_amnt: Optional[float] = Field(..., nullable=True)
@@ -170,6 +174,10 @@ class LoanQualityData(BaseModel):
 
 
 class QualityResponse(BaseModel):
+    """
+    Pydantic model for loan quality prediction responses.
+    """
+
     Grade: str
     SubGrade: str
     InterestRate: float
@@ -177,7 +185,7 @@ class QualityResponse(BaseModel):
 
 class PredictionResponse(BaseModel):
     """
-    Pydantic model for prediction responses.
+    Pydantic model for loan acceptance prediction responses.
     """
 
     Decision: str

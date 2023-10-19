@@ -50,7 +50,7 @@ async def predict_endpoint(data: LoanDataInitial):
     Predict endpoint that makes predictions based on input data.
 
     Args:
-        data (PredictionRequest): The input data for prediction.
+        data (LoanDataInitial): The input data for prediction.
 
     Returns:
         PredictionResponse: The prediction results.

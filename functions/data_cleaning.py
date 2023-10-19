@@ -12,11 +12,13 @@ def categorize_strings_contains(
 
     Args:
         data (pl.DataFrame): The DataFrame containing the column to categorize.
-        category_mappings (Dict[str, list]): A dictionary mapping categories (strings) to lists of substrings.
+        category_mappings (Dict[str, list]): A dictionary mapping categories
+        (strings) to lists of substrings.
         col_name (str): The name of the column to categorize.
 
     Returns:
-        pl.DataFrame: A new DataFrame with the specified column updated to reflect the categorized values.
+        pl.DataFrame: A new DataFrame with the specified column updated to
+        reflect the categorized values.
     """
     for category, substrings in category_mappings.items():
         data = data.with_columns(
@@ -35,15 +37,18 @@ def categorize_strings_is(
     data: pl.DataFrame, category_mappings: Dict[str, list], col_name: str
 ) -> pl.DataFrame:
     """
-    Categorizes strings in a DataFrame column based on a mapping of categories to exact values.
+    Categorizes strings in a DataFrame column based on a mapping of
+    categories to exact values.
 
     Args:
         data (pl.DataFrame): The DataFrame containing the column to categorize.
-        category_mappings (Dict[str, list]): A dictionary mapping categories (strings) to lists of substrings.
+        category_mappings (Dict[str, list]): A dictionary mapping categories
+        (strings) to lists of substrings.
         col_name (str): The name of the column to categorize.
 
     Returns:
-        pl.DataFrame: A new DataFrame with the specified column updated to reflect the categorized values.
+        pl.DataFrame: A new DataFrame with the specified column updated to
+        reflect the categorized values.
     """
     for category, values in category_mappings.items():
         data = data.with_columns(
@@ -58,12 +63,14 @@ def lowercase_underscore_text(
     df: pl.DataFrame, col: str, new_col_name: str
 ) -> pl.DataFrame:
     """
-    Edit a column in a Polars DataFrame by converting its values to lowercase and replacing spaces with underscores.
+    Edit a column in a Polars DataFrame by converting its values to lowercase
+    and replacing spaces with underscores.
 
     Args:
         df (pl.DataFrame): The input DataFrame.
         col (str): The name of the column to be edited.
-        new_col_name (str): The name of the new column to store the edited values.
+        new_col_name (str): The name of the new column to store the edited
+        values.
 
     Returns:
         pl.DataFrame: A new DataFrame with the edited column.
@@ -77,7 +84,8 @@ def replace_below_min(
     df: pl.DataFrame, col: str, min_val: float, replacement: float
 ) -> pl.DataFrame:
     """
-    Replace values in a specified column that are below a minimum value with a new value.
+    Replace values in a specified column that are below a minimum value
+    with a new value.
 
     Args:
         df (pl.DataFrame): The input DataFrame.
@@ -117,7 +125,8 @@ def winsorize_column(
         percentile (float): The percentile value to use for winsorization.
 
     Returns:
-        pd.DataFrame: A modified DataFrame with the specified column winsorized.
+        pd.DataFrame: A modified DataFrame with the specified
+        column winsorized.
     """
     # Calculate the specified percentile value
     q = df[col_name].quantile(percentile)
@@ -135,20 +144,23 @@ def text_int_to_num(data: pl.DataFrame, cols: list) -> pl.DataFrame:
     """
     Convert text containing integers to numerical values in specified columns.
 
-    This function takes a Polars DataFrame and a list of column names. It converts
-    text values within these columns that contain integers to numerical values.
+    This function takes a Polars DataFrame and a list of column names.
+    It converts text values within these columns that contain integers
+    to numerical values.
 
     Parameters:
     -----------
     data : pl.DataFrame
         The input Polars DataFrame.
     cols : list of str
-        List of column names containing text values with integers to be converted.
+        List of column names containing text values with integers to be
+        converted.
 
     Returns:
     --------
     data : pl.DataFrame
-        The input Polars DataFrame with text values containing integers converted to numerical values.
+        The input Polars DataFrame with text values containing integers
+        converted to numerical values.
     """
     for col in cols:
         data = data.with_columns(
@@ -166,25 +178,30 @@ def cast_str_to_float(data, col_name):
 
 def str_to_date(data: pl.DataFrame, cols: Union[str, list], fmt: str):
     """
-    Convert strings to date values in specified columns using the specified format.
+    Convert strings to date values in specified columns using the
+    specified format.
 
-    This function takes a Polars DataFrame, a column name or a list of column names, and
-    a format string or a list of format strings. It converts the string values within
-    the specified columns to date values using the specified format(s).
+    This function takes a Polars DataFrame, a column name or a list of
+    column names, and a format string or a list of format strings.
+    It converts the string values within the specified columns
+    to date values using the specified format(s).
 
     Parameters:
     -----------
     data : pl.DataFrame
         The input Polars DataFrame.
     cols : Union[str, List[str]]
-        Either a column name or a list of column names containing string values to be converted.
+        Either a column name or a list of column names containing string
+        values to be converted.
     fmt : Union[str, List[str]]
-        Either a format string or a list of format strings used for date conversion.
+        Either a format string or a list of format strings used for date
+        conversion.
 
     Returns:
     --------
     data : pl.DataFrame
-        The input Polars DataFrame with string values converted to date values in the specified columns.
+        The input Polars DataFrame with string values converted to date values
+        in the specified columns.
     """
     for col in cols:
         if isinstance(fmt, list):
