@@ -13,7 +13,36 @@ from ray.tune.stopper import (
 )
 
 
-def objective(pipeline, params, X_train, y_train, X_val, y_val, n, average="binary"):
+def objective(
+    pipeline: Pipeline,
+    params: dict,
+    X_train: pl.DataFrame,
+    y_train: pl.Series,
+    X_val: pl.DataFrame,
+    y_val: pl.Series,
+    n: int,
+    average: str = "binary",
+) -> float:
+    """
+    Objective function for hyperparameter tuning.
+
+    Args:
+    pipeline (Pipeline): The machine learning pipeline to be configured and
+    evaluated.
+    params (dict): Hyperparameter configuration for the pipeline.
+    X_train (pl.DataFrame): Training data features as a Polars DataFrame.
+    y_train (pl.Series): Training data labels as a Polars Series.
+    X_val (pl.DataFrame): Validation data features as a Polars DataFrame.
+    y_val (pl.Series): Validation data labels as a Polars Series.
+    n (int): The current iteration number.
+    average (str, optional): The averaging strategy for the F1 score, i.e.
+    "binary", "macro", "weighted" if the value is "mse". The mean squared error
+    is used instead.
+
+    Returns:
+    float: The F1 score (or negative mean squared error if average is "mse")
+    as the objective to be optimized.
+    """
     pipeline.set_params(**params)
     pipeline.fit(X_train, y_train)
     preds = pipeline.predict(X_val)
@@ -26,18 +55,64 @@ def objective(pipeline, params, X_train, y_train, X_val, y_val, n, average="bina
 
 
 class Trainable(tune.Trainable):
+    """
+    A custom Ray Tune trainable class for hyperparameter tuning.
+
+    This class is used to configure and execute hyperparameter tuning experiments
+    using Ray Tune. It sets up the necessary parameters and data for each trial,
+    and performs steps to evaluate the hyperparameter configurations.
+
+    Attributes:
+    - config (dict): A dictionary of hyperparameters for the pipeline.
+    - pipeline: The machine learning pipeline to be configured and evaluated.
+    - X_train: Training data features.
+    - y_train: Training data labels.
+    - X_val: Validation data features.
+    - y_val: Validation data labels.
+    - sample_size (Union[int, str]): The sample size for data splitting.
+    - average (str): The averaging strategy for the F1 score, either "binary" or "mse".
+    - stratify (bool): Whether to stratify data splitting.
+
+    Methods:
+    - setup(config, pipeline, X_train, y_train, X_val, y_val, sample_size, average, stratify):
+        Set up the trainable object with hyperparameters and data.
+
+    - step():
+        Perform a training step and return the score.
+
+    """
+
     def setup(
         self,
         config: dict,
-        pipeline,
-        X_train,
-        y_train,
-        X_val,
-        y_val,
+        pipeline: Pipeline,
+        X_train: pl.DataFrame,
+        y_train: pl.Series,
+        X_val: pl.DataFrame,
+        y_val: pl.Series,
         sample_size: Union[int, str] = 100000,
         average: str = "binary",
-        stratify=True,
+        stratify: bool = True,
     ):
+        """
+        Set up the trainable object with hyperparameters and data.
+
+        Args:
+        config (dict): A dictionary of hyperparameters.
+        pipeline: The machine learning pipeline.
+        X_train: Training data features.
+        y_train: Training data labels.
+        X_val: Validation data features.
+        y_val: Validation data labels.
+        sample_size (Union[int, str], optional): The sample size for data
+        splitting. Default is 100,000.
+
+        average (str, optional): The averaging strategy for the F1 score,
+        either "binary" or "mse". Default is "binary".
+
+        stratify (bool, optional): Whether to stratify data splitting.
+        Default is True.
+        """
         # config (dict): A dict of hyperparameters
         self.x = 0
         self.params = config
@@ -89,6 +164,12 @@ class Trainable(tune.Trainable):
                 self.split_idx_test[i] = split_id[0]
 
     def step(self):
+        """
+        Perform a training step.
+
+        Returns:
+        dict: A dictionary containing the score for the current step.
+        """
         if self.sample_size != "all":
             X_train = self.X_train[self.split_idx_train[self.x]]
             y_train = self.y_train[self.split_idx_train[self.x]]
@@ -115,10 +196,10 @@ class Trainable(tune.Trainable):
 
 class Models:
     """
-    Container for managing and evaluating machine learning models.
+    Container for managing and evaluating machine learning models using Polars
+    and Ray Tune for hyperparameter optimization.
 
-    This class allows you to add, tune, and evaluate machine learning models
-    using Optuna for hyperparameter optimization.
+    This class allows you to add, tune, and evaluate machine learning models.
 
     Attributes:
     -----------
@@ -127,30 +208,15 @@ class Models:
 
     Methods:
     --------
-    add_model(model_name, pipeline, param_grid, override_n=None)
+    add_model(model_name, pipeline, param_grid, override_n=None,
+    metric_threshold=0.55)
         Add a machine learning model to the container.
 
     remove_model(model_name)
         Remove a machine learning model from the container.
 
-    tune_val_all(X, y, score="f1", n=100)
+    tune_all(X_train, y_train, X_val, y_val, **kwargs)
         Tune and cross-validate all models in the container.
-
-    Inner Class:
-    ------------
-    Model
-        Represents an individual machine learning model with methods for tuning and evaluation.
-
-        Methods:
-        --------
-        tune_model(X, y, n=100, starting_params=None)
-            Tune the model's hyperparameters using Optuna.
-
-        cross_val(X, y, n=10, random_state=1, score="f1")
-            Perform k-fold cross-validation for the model.
-
-        calc_perm_importances(X, y, score="f1", n=10, random_seed=1)
-            Calculate feature importances using permutation importance.
 
     """
 
@@ -159,27 +225,29 @@ class Models:
 
     class Model:
         """
-        Represents an individual machine learning model with methods for tuning and evaluation.
+        Represents an individual machine learning model with methods for
+        tuning and evaluation.
 
         Parameters:
         -----------
+        name : str
+            The name of the model.
         pipeline : Pipeline
             The scikit-learn pipeline for the model.
         param_grid : dict
             A dictionary of hyperparameter search spaces for the model.
+        metric_threshold : float, optional
+            Threshold of tuning metric for early stopping. Default is 0.55.
         override_n : int, optional
-            Number of trials for hyperparameter optimization. Overrides the default value.
+            Number of trials for hyperparameter optimization.
+            Overrides the default value.
 
         Methods:
         --------
-        tune_model(X, y, n=100, starting_params=None)
-            Tune the model's hyperparameters using Optuna.
+        tune_model(X_train, y_train, X_val, y_val, n=10, n_training=10,
+        sample_size=100000, average="binary", stratify=True)
+            Tune the model's hyperparameters using Ray Tune and Optuna.
 
-        cross_val(X, y, n=10, random_state=1, score="f1")
-            Perform k-fold cross-validation for the model.
-
-        calc_perm_importances(X, y, score="f1", n=10, random_seed=1)
-            Calculate feature importances using permutation importance.
         """
 
         def __init__(
@@ -187,7 +255,7 @@ class Models:
             name: str,
             pipeline: Pipeline,
             param_grid: Dict,
-            metric_threshold: float = 0.55,  # threshold of tuning metric for early stopping
+            metric_threshold: float = 0.55,
             override_n: Optional[int] = None,
         ) -> None:
             self.pipeline: Pipeline = pipeline
@@ -210,17 +278,30 @@ class Models:
             stratify=True,
         ):
             """
-            Tune the model's hyperparameters using Optuna.
+            Tune the model's hyperparameters using Ray Tune and Optuna.
 
             Parameters:
-                X : pd.DataFrame or pd.Series
-                    The feature matrix.
-                y : pd.Series or np.ndarray
-                    The target variable.
-                n : int, optional
-                    Number of trials for hyperparameter optimization. Default is 100.
-                starting_params : dict, optional
-                    Starting hyperparameters for optimization. Default is None.
+            X_train : Union[pl.DataFrame, np.ndarray, pl.Series]
+                The feature matrix for training.
+            y_train : Union[pl.DataFrame, np.ndarray, pl.Series]
+                The target variable for training.
+            X_val : Union[pl.DataFrame, np.ndarray, pl.Series]
+                The feature matrix for validation.
+            y_val : Union[pl.DataFrame, np.ndarray, pl.Series]
+                The target variable for validation.
+            n : int, optional
+                Number of trials for hyperparameter optimization.
+                Default is 10.
+            n_training : int, optional
+                Number of training iterations. Default is 10.
+            sample_size : int, optional
+                The sample size for data splitting. Default is 100,000.
+            average : str, optional
+                The averaging strategy for the F1 score, either "binary",
+                "macro", "average" or "mse" if mean squared error is to
+                be used instead. Default is "binary".
+            stratify : bool, optional
+                Whether to stratify data splitting. Default is True.
             """
             stopper = CombinedStopper(
                 MaximumIterationStopper(n_training),
@@ -276,14 +357,17 @@ class Models:
         Add a machine learning model to the container.
 
         Parameters:
-            model_name : str
-                The name of the model.
-            pipeline : Pipeline
-                The scikit-learn pipeline for the model.
-            param_grid : dict
-                A dictionary of hyperparameter search spaces for the model.
-            override_n : int, optional
-                Number of trials for hyperparameter optimization. Overrides the default value.
+        model_name : str
+            The name of the model.
+        pipeline : Pipeline
+            The scikit-learn pipeline for the model.
+        param_grid : Dict
+            A dictionary of hyperparameter search spaces for the model.
+        override_n : int, optional
+            Number of trials for hyperparameter optimization.
+            Overrides the default value.
+        metric_threshold : float, optional
+            Threshold of tuning metric for early stopping. Default is 0.55.
         """
         self.models[model_name] = self.Model(
             model_name,
@@ -316,14 +400,16 @@ class Models:
         Tune and cross-validate all models in the container.
 
         Parameters:
-            X : pd.DataFrame
-                The feature matrix.
-            y : pd.Series or np.ndarray
-                The target variable.
-            score : str, optional
-                Scoring metric for cross-validation. Default is "f1".
-            n : int, optional
-                Number of trials for hyperparameter optimization. Default is 100.
+        X_train : Union[pl.DataFrame, np.ndarray, pl.Series]
+            The feature matrix for training.
+        y_train : Union[pl.DataFrame, np.ndarray, pl.Series]
+            The target variable for training.
+        X_val : Union[pl.DataFrame, np.ndarray, pl.Series]
+            The feature matrix for validation.
+        y_val : Union[pl.DataFrame, np.ndarray, pl.Series]
+            The target variable for validation.
+        **kwargs
+            Additional keyword arguments to be passed to the tune_model method.
         """
         for name, model in self.models.items():
             if model.override_n:
