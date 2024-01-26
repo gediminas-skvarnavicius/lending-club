@@ -76,9 +76,9 @@ For single applications, the accuracy was 45% with a macro average f1-score of 0
 #### Feature Importance
 SHAP analysis indicated the most influential features for grade and interest rate predictions, including loan term, FICO range, loan amount, annual income, debt-to-income ratio, verification status, purpose, and the number of accounts opened in the past 12 months.
 ## Conclusions:
-*The loan acceptance model provides adequate suggestions for loan acceptance/rejection.
-*The loan quality models exhibited poor performance, possibly due to factors such as low-grade loan representation, subgrade classification challenges, temporal performance variations, and the need for improved modeling techniques.
-*Better/different machine learning model development approaches should be explored, and external factors should be considered for a more comprehensive analysis.
+* The loan acceptance model provides adequate suggestions for loan acceptance/rejection.
+* The loan quality models exhibited poor performance, possibly due to factors such as low-grade loan representation, subgrade classification challenges, temporal performance variations, and the need for improved modeling techniques.
+* Better/different machine learning model development approaches should be explored, and external factors should be considered for a more comprehensive analysis.
 ## Further Improvements:
 This project offers several avenues for immediate improvement:
 
